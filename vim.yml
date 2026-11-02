@@ -1,0 +1,17 @@
+# selene standard library: Neovim globals and plenary busted globals for tests.
+# Specs use `local assert = require("luassert")`, because lua51 already defines `assert`.
+base: lua51
+name: vim
+globals:
+  vim:
+    any: true
+  describe:
+    any: true
+  it:
+    any: true
+  before_each:
+    any: true
+  after_each:
+    any: true
+  pending:
+    any: true
