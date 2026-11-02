@@ -2,9 +2,10 @@
 
 ## Diff input
 
-For each revision and file the plugin gets:
-- The diff hunks, with whitespace changes ignored (`jj diff -r <rev> --git --ignore-all-space`).
-- The old text (parent: `jj file show -r <rev>-`) and the new text (`jj file show -r <rev>`).
+One diff engine: JJ. One call per revision: `jj diff -r <commit_id> --git -w --context 2`.
+- 2 context lines give the ±2 neighbors of each changed line. That is all a line key needs.
+- So counts for the full stack need no file content.
+- The new text (`jj file show`) is read only for the file open in view mode.
 
 Lines with whitespace-only changes are not reviewable.
 
@@ -23,7 +24,7 @@ key = side | path | hash(normalize(context)) | occurrence
 | `context` | The line, plus 2 lines above and 2 below, from the same side's text. Missing lines (file edge) are empty. |
 | `normalize` | Remove all whitespace |
 | `hash` | `vim.fn.sha256` |
-| `occurrence` | 1-based index among lines in the same text with the same hash, top to bottom |
+| `occurrence` | 1-based index among reviewable lines in the same file diff, same side, same hash, top to bottom. Unchanged lines elsewhere in the file do not count. |
 
 Example. Revision changes `load()`:
 

@@ -28,6 +28,8 @@ You see the count of lines left to review per file, per revision, and for the st
 | [ux.md](ux.md) | Layout, mockups, visual states, keymaps |
 | [data-model.md](data-model.md) | Line keys, marks, comments, counts, JSON files |
 | [stack.md](stack.md) | Revset, refresh, behavior when the stack is rewritten |
+| [architecture.md](architecture.md) | Patterns, layers, modules, state, messages, effects, flows |
+| [roadmap.md](roadmap.md) | v0 increments (v0.1 … v0.7), each one usable |
 | [open-questions.md](open-questions.md) | Points not decided yet |
 
 ## Glossary

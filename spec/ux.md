@@ -114,6 +114,7 @@ Buffer-local. Only in review buffers.
 | `]R` / `[R` | Next / previous file in the revision |
 
 No key to change revision. Use the explorer.
+The cursor does not move after a mark. Use `]r` to go to the next unreviewed line.
 
 ### Explorer keymaps
 
