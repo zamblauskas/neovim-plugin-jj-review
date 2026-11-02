@@ -55,6 +55,8 @@ lua/review/
     counts.lua          counts per file, revision, stack
     toggle.lua          toggle rules → new mark set
     comments.lua        lookup: found / outdated / orphaned
+  lib/
+    tbl.lua             pure table helpers: with (immutable update)
   parse/
     log.lua             jj log template output → revisions
     diff.lua            jj diff --git output → file diffs
@@ -71,7 +73,7 @@ lua/review/
     keymaps.lua         buffer-local keymaps → messages
     comment_input.lua   float window
 tests/
-  core/  parse/  view/  shell/   (mirror of lua/review)
+  core/  lib/  parse/  view/  shell/   (mirror of lua/review)
   fixtures/                      jj output samples
 ```
 
