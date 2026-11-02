@@ -44,10 +44,11 @@ Rules:
 lua/review/
   init.lua              setup(), :Review command, global keymaps
   app.lua               runtime: holds current state, dispatch(msg) loop
-  types.lua             LuaCATS classes for all shapes
+  config.lua            defaults, merge, validation
   core/
-    msg.lua             message constructors
-    effect.lua          effect constructors
+    state.lua           initial state, `with` (immutable update)
+    msg.lua             message classes and constructors
+    effect.lua          effect classes and constructors
     update.lua          update(state, msg) → state, effects (dispatch table)
     handlers/           one file per message group (stack, marks, comments, ui)
     stack.lua           remove empty, check linear, order
@@ -67,50 +68,57 @@ lua/review/
     async.lua           coroutine wrapper: run, await
     jj.lua              JJ port adapter: build args, run with vim.system
     store.lua           load, merge, atomic save of JSON
-    effects.lua         effect interpreter
+    effects.lua         effect interpreter, render batching
     apply.lua           apply view specs to buffers (namespaces)
+    explorer.lua        explorer window port (only owner of its buffer and window)
+    highlights.lua      highlight groups (default links)
     watcher.lua         op_heads watcher + focus autocmds
     keymaps.lua         buffer-local keymaps → messages
     comment_input.lua   float window
 tests/
   core/  lib/  parse/  view/  shell/   (mirror of lua/review)
-  fixtures/                      jj output samples
+  helpers.lua                    run_async, temp JJ repo
+  init_spec.lua                  end to end with a real JJ repo
 ```
+
+LuaCATS classes live next to the code that makes them (no central `types.lua`).
+Specs use `local assert = require("luassert")`: selene's `lua51` already defines `assert`.
 
 ## State
 
-```lua
----@class State
----@field repo_root string
----@field revset string
----@field op_id string?
----@field stack StackOk|StackError|StackLoading
----@field diffs table<string, FileDiff[]>   -- by commit id (cache)
----@field marks table<string, Mark>         -- by line key
----@field comments Comment[]
----@field ui UiState                        -- folds, open file, mode
-```
+See `core/state.lua` (`review.State`). Main fields: `config`, `open`, `generation`, `cwd`, `root`, `revset`,
+`op_id`, `stack`, `diffs` (by commit id), `marks` (by line key), `comments`. UI fields (folds, open file, mode)
+are added with v0.2.
 
-## Messages (draft)
+**Generation.** Each `Opened` increments `generation`. Effects carry it, and their result messages carry it back.
+`update` drops a message from an older generation, and every message except `Opened` while the review is closed.
+
+## Messages
+
+v0.1 has the lifecycle messages and `RootResolved`, `OpChecked`, `StackLoaded`, `JjFailed`. The rest is the plan.
 
 | Group | Messages |
 |---|---|
-| Lifecycle | `Opened{revset}`, `Closed`, `Cleared` |
-| JJ | `OpChecked{op_id}`, `StackLoaded{revisions}`, `DiffLoaded{commit_id, files}`, `ContentLoaded{commit_id, path, text}`, `JjFailed{args, stderr}` |
+| Lifecycle | `Opened{cwd, revset}`, `Closed`, `Cleared` |
+| JJ | `RootResolved{root}`, `OpChecked{op_id}`, `StackLoaded{revisions}`, `DiffLoaded{commit_id, files}`, `ContentLoaded{commit_id, path, text}`, `JjFailed{args, stderr}` |
 | Store | `StoreLoaded{marks, comments}` |
 | Review | `ToggleRequested{target}`, `CommentSubmitted{anchor, text}`, `CommentDeleted{id}` |
 | UI | `FoldToggled{change_id}`, `FileOpened{change_id, path}`, `EditRequested{change_id}` |
 
-## Effects (draft)
+## Effects
+
+v0.1 has `ResolveRoot`, `CheckOp`, `LoadStack`, `OpenExplorer`, `CloseExplorer`, `RenderExplorer`. The rest is the plan.
 
 | Effect | Result message |
 |---|---|
-| `CheckOp` | `OpChecked` |
+| `ResolveRoot{cwd}` | `RootResolved` or `JjFailed` |
+| `CheckOp{root}` | `OpChecked` |
 | `LoadStack{revset}` | `StackLoaded` or `JjFailed` |
 | `LoadDiff{change_id, commit_id}` | `DiffLoaded` |
 | `LoadContent{commit_id, path}` | `ContentLoaded` |
 | `JjEdit{change_id}` | (watcher sees new operation → `OpChecked`) |
 | `LoadStore` / `SaveMarks` / `SaveComments` | `StoreLoaded` / none |
+| `OpenExplorer` / `CloseExplorer` | none |
 | `RenderExplorer` / `RenderDiff` | none |
 | `OpenBuffer{change_id, path, mode}` | none |
 | `Notify{level, text}` | none |

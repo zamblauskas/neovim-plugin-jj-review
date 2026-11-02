@@ -7,7 +7,7 @@ Each increment gives something you can use in Neovim. Each one is a few JJ revis
 **Built in full from v0.1 (the skeleton):**
 - Elm runtime: `app.lua`, `update` dispatch table, effect interpreter, render batching.
 - Ports: `jj`, `fs`, `async`.
-- `types.lua` with the full `State` shape. Fields for later increments exist from the start (empty `marks`, empty `comments`).
+- `core/state.lua` with the full `State` shape. Fields for later increments exist from the start (empty `marks`, empty `comments`).
 - Directory layout from [architecture.md](architecture.md#directory-layout).
 
 Later increments add messages, handlers, effects and view parts. They do not change how the parts connect.
@@ -39,11 +39,13 @@ Steps (one revision each):
 1. **Tooling.** `Makefile` (`test`, `lint`, `format`, `typecheck`, `check`), `stylua.toml`, `selene.toml`, `.luarc.check.json`, `tests/minimal_init.lua`, `.gitignore`.
 2. **Async and JJ port.** `shell/async.lua` (coroutine run / await), `shell/jj.lua` (`vim.system`, `--ignore-working-copy`, result `{ ok, stdout, stderr }`). Tests with a temp JJ repo.
 3. **Parse log and stack.** `parse/log.lua` (template with `\0` separators), `core/stack.lua` (remove empty, check linear, order newest first). Tests with fixtures.
-4. **Elm runtime.** `types.lua`, `core/msg.lua`, `core/effect.lua`, `core/update.lua` (dispatch table), `app.lua` (state, `dispatch`), `shell/effects.lua` (interpreter, render batching). Handlers: `Opened`, `Closed`, `OpChecked`, `StackLoaded`, `JjFailed`. Tests: `update` with plain data.
+4. **Elm runtime.** `config.lua`, `core/state.lua`, `core/msg.lua`, `core/effect.lua`, `core/update.lua` (dispatch table), `app.lua` (state, `dispatch`), `shell/effects.lua` (interpreter, render batching). Handlers: `Opened`, `Closed`, `RootResolved`, `OpChecked`, `StackLoaded`, `JjFailed`. Tests: `update` with plain data.
 5. **Explorer.** `view/explorer.lua` (header, revision rows, `◆`, error state), `shell/apply.lua`, explorer window (left split, `explorer_width`), `q`. Tests: view output.
 6. **Entry point.** `init.lua`: `setup()` with config validation, `:Review [revset]`, `:Review close`, `<leader>jvv`, `<leader>jvq`. Dotfiles entry.
 
-In v0.1 `OpChecked` always loads the stack (no watcher yet). The explorer shows revision rows without counts.
+In v0.1 the stack loads once per open (no watcher yet). The explorer shows revision rows without counts.
+
+Status: done.
 
 ## v0.2 — Read the diffs
 
