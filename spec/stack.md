@@ -25,7 +25,10 @@ Trigger: the JJ operation id changed. Checked:
 - When Neovim gets focus, or a review buffer gets focus.
 - When `.jj/repo/op_heads/` changes (file watcher). The agent runs in another terminal, so focus may not change.
 
-On refresh: evaluate the stack again, recompute diffs and counts, redraw.
+On refresh: evaluate the stack again, recompute diffs and counts, read `marks.json` again, redraw.
+
+Changes the agent makes without a jj command are not seen until a jj command runs (the plugin never snapshots
+in view mode).
 
 No refresh loop: all JJ reads by the plugin use `--ignore-working-copy`. They never snapshot, so they never create an operation. In working-copy mode, saving a buffer triggers one snapshot, then one refresh.
 
@@ -41,7 +44,10 @@ No refresh loop: all JJ reads by the plugin use `--ignore-working-copy`. They ne
 | Squash root into trunk | JJ refuses (trunk is immutable). |
 | New revision on a middle revision (sibling) | Not linear → error. |
 | Abandon a revision | It disappears. Marks stay in the file. |
-| Open revision disappears | Close the diff. Explorer cursor goes to the nearest previous (older) revision. |
+| Open revision disappears | Close the diff (empty buffer in the diff window). Explorer cursor goes to the nearest previous (older) revision still in the stack, else the newest. |
+| Open file disappears from its revision | Close the diff. Explorer cursor goes to the revision row. |
+| Open revision is rewritten | Show the new text of the file. Cursor and scroll stay. |
+| Refresh fails (jj error) | Keep the last stack. Show a warning. |
 
 ## Modes
 

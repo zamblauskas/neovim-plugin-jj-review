@@ -57,6 +57,8 @@ lua/review/
     toggle.lua          toggle rules → mark patch {set, unset}; apply
     targets.lua         toggle target (line, range, block, file) → keys
     navigation.lua      next / previous unreviewed change
+    open_file.lua       show the open file; follow it after a stack or diff change
+    explorer_cursor.lua explorer cursor row after a redraw
     comments.lua        lookup: found / outdated / orphaned
     folds.lua           explorer fold state: user choice, default rule
     file_tree.lua       files → tree entries in display order (explorer, ]R)
@@ -119,14 +121,14 @@ See `core/state.lua` (`review.State`). Main fields: `config`, `open`, `generatio
 
 ## Messages
 
-v0.3 has the lifecycle and JJ messages, `StoreLoaded{marks}`, `StoreFailed{error}`, `ToggleRequested{target, now}`,
+v0.4 adds `RefreshRequested` (watcher or focus → `CheckOp` and `LoadStore`). v0.3 has the lifecycle and JJ messages, `StoreLoaded{marks}`, `StoreFailed{error}`, `ToggleRequested{target, now}`,
 `FoldToggled`, `FileOpened`, `FileStepped`, `UnreviewedStepped{change_id, path, line, offset}`. The rest is the plan.
 A failed `jj diff` or `jj file show` is a `JjFailed` (stack error state). Messages that make marks carry `now`
 (core has no clock).
 
 | Group | Messages |
 |---|---|
-| Lifecycle | `Opened{cwd, revset}`, `Closed`, `Cleared` |
+| Lifecycle | `Opened{cwd, revset}`, `Closed`, `Cleared`, `RefreshRequested` |
 | JJ | `RootResolved{root}`, `OpChecked{op_id}`, `StackLoaded{revisions}`, `DiffLoaded{commit_id, files}`, `ContentLoaded{commit_id, path, lines}`, `JjFailed{stderr}` |
 | Store | `StoreLoaded{marks, comments}`, `StoreFailed{error}` |
 | Review | `ToggleRequested{target, now}`, `UnreviewedStepped{change_id, path, line, offset}`, `CommentSubmitted{anchor, text}`, `CommentDeleted{id}` |
@@ -148,9 +150,11 @@ v0.3 has `ResolveRoot`, `CheckOp`, `LoadStack`, `LoadDiff`, `LoadContent`, `Load
 | `LoadStore{root}` | `StoreLoaded` or `StoreFailed` |
 | `SaveMarks{root, patch}` / `ClearMarks{root}` / `SaveComments` | none, or `StoreFailed` |
 | `MoveCursor{line}` | none |
+| `StartWatcher{root}` / `StopWatcher` | `RefreshRequested` on each jj operation or focus |
+| `CloseDiff` | none |
 | `OpenTab` / `CloseTab` | none |
 | `RenderExplorer` / `RenderDiff` | none |
-| `OpenBuffer{change_id, path, lines, cursor_line}` (mode added in v0.6) | none |
+| `OpenBuffer{change_id, path, lines, cursor_line, keep_view}` (mode added in v0.6) | none |
 | `Notify{level, text}` | none |
 
 Render is an effect, so `update` decides when to redraw. The shell computes the view from the new state and applies it.
@@ -166,7 +170,15 @@ Render is an effect, so `update` decides when to redraw. The shell computes the 
 
 ### Refresh
 
-Trigger: watcher on `.jj/repo/op_heads/` or focus → `CheckOp`. Same as Open steps 2–4. Only rewritten revisions (new commit ids) are fetched again. Old cache entries not in the stack are dropped.
+Trigger: watcher on `.jj/repo/op_heads/heads/` (debounced 200 ms; follows `.jj/repo` of a secondary workspace) or
+focus → `RefreshRequested` → `CheckOp` and `LoadStore`. Same as Open steps 2–4. Only rewritten revisions (new commit
+ids) are fetched again. Old cache entries not in the stack are dropped.
+
+- The open file follows: new commit → shown again, cursor and scroll kept; revision or file gone → `CloseDiff`.
+- A stack error (not linear) does not change the open file.
+- `JjFailed` with a loaded stack keeps it and warns. The error state is only for the first load.
+- The fold default is computed again per stack load; the old one stays until then.
+- The explorer cursor stays on its target. Gone: its revision; revision gone: the nearest older; else the newest.
 
 ### Toggle reviewed
 

@@ -93,6 +93,11 @@ The agent rewrites the stack. The view follows, and marks survive.
 
 Features: F-13.
 
+Steps (one revision each): watcher; refresh in core; open file follows a rewrite; explorer cursor keeps its
+target.
+
+Status: done.
+
 ## v0.5 — Comments
 
 Write feedback for the agent.
