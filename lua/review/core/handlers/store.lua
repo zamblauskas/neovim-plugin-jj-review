@@ -1,4 +1,4 @@
--- Handlers: review state from the store (marks.json).
+-- Handlers: review state from the store (marks.json, comments.json).
 
 local effect = require("review.core.effect")
 local folds = require("review.core.folds")
@@ -10,7 +10,7 @@ local M = {}
 ---@param msg review.Msg.StoreLoaded
 ---@return review.State, review.Effect[]
 function M.StoreLoaded(state, msg)
-  local next_state = tbl.with(state, { marks = msg.marks, marks_loaded = true })
+  local next_state = tbl.with(state, { marks = msg.marks, comments = msg.comments, marks_loaded = true })
   return tbl.with(next_state, { fold_default = folds.update_default(next_state) }),
     { effect.render_explorer(), effect.render_diff() }
 end
@@ -28,9 +28,9 @@ function M.Cleared(state)
   if not state.root then
     return state, {}
   end
-  return tbl.with(state, { marks = {} }),
+  return tbl.with(state, { marks = {}, comments = {} }),
     {
-      effect.clear_marks(state.generation, state.root),
+      effect.clear_store(state.generation, state.root),
       effect.render_explorer(),
       effect.render_diff(),
     }

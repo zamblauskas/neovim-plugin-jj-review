@@ -18,7 +18,7 @@ local M = {}
 ---@field comments review.Comment[]
 ---@field folds review.Folds           -- explorer: user fold choices by change id
 ---@field fold_default review.FoldDefault
----@field marks_loaded boolean         -- marks.json was read at least once
+---@field marks_loaded boolean         -- the store was read at least once
 ---@field contents table<string, table<string, string[]>>  -- new text lines by commit id, then path
 ---@field open_file? review.OpenFile    -- file in the diff window
 

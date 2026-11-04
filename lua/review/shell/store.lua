@@ -1,17 +1,47 @@
--- Store port: review state in `<root>/.jj/review/marks.json`. JJ never snapshots `.jj/`.
--- Each save reads the file again, applies the patch, and writes with write-to-temp + rename (atomic).
+-- Store port: review state in `<root>/.jj/review/` (marks.json, comments.json). JJ never snapshots `.jj/`.
+-- Each write reads the file again, applies the change, and writes with write-to-temp + rename (atomic).
 -- A file with an unknown version is never written.
 
+local comments = require("review.core.comments")
 local toggle = require("review.core.toggle")
 
 local M = {}
 
 local VERSION = 1
 
+---@class review.StoreDoc
+---@field file string
+---@field field string        -- field of the document that holds the data
+---@field empty fun(): table  -- empty data (an object for marks, a list for comments)
+
+---@type review.StoreDoc
+local MARKS = { file = "marks.json", field = "marks", empty = vim.empty_dict }
+---@type review.StoreDoc
+local COMMENTS = {
+  file = "comments.json",
+  field = "comments",
+  empty = function()
+    return {}
+  end,
+}
+
+---@param root string
+---@param doc review.StoreDoc
+---@return string
+local function path_of(root, doc)
+  return root .. "/.jj/review/" .. doc.file
+end
+
 ---@param root string
 ---@return string
 function M.marks_path(root)
-  return root .. "/.jj/review/marks.json"
+  return path_of(root, MARKS)
+end
+
+---@param root string
+---@return string
+function M.comments_path(root)
+  return path_of(root, COMMENTS)
 end
 
 --- File content, or nil if the file does not exist.
@@ -27,27 +57,29 @@ local function read_file(path)
   return text
 end
 
---- Marks from the file content. No file → no marks.
+--- Data from the file content. No file → empty data.
+---@param doc review.StoreDoc
 ---@param text string?
----@return review.Marks?, string?
-local function decode(text)
+---@return table?, string?
+local function decode(doc, text)
   if text == nil then
-    return {}
+    return doc.empty()
   end
-  local ok, doc = pcall(vim.json.decode, text)
-  if not ok or type(doc) ~= "table" then
-    return nil, "marks.json is not valid JSON"
-  elseif doc.version ~= VERSION then
-    return nil, "marks.json has an unknown version (" .. tostring(doc.version) .. "): not written"
+  local ok, value = pcall(vim.json.decode, text)
+  if not ok or type(value) ~= "table" then
+    return nil, doc.file .. " is not valid JSON"
+  elseif value.version ~= VERSION then
+    return nil, doc.file .. " has an unknown version (" .. tostring(value.version) .. "): not written"
   end
-  return type(doc.marks) == "table" and doc.marks or {}
+  return type(value[doc.field]) == "table" and value[doc.field] or doc.empty()
 end
 
----@param marks review.Marks
+---@param doc review.StoreDoc
+---@param data table
 ---@return string
-local function encode(marks)
-  local doc = { version = VERSION, marks = next(marks) and marks or vim.empty_dict() }
-  return vim.json.encode(doc, { indent = "  ", sort_keys = true }) .. "\n"
+local function encode(doc, data)
+  local value = { version = VERSION, [doc.field] = next(data) and data or doc.empty() }
+  return vim.json.encode(value, { indent = "  ", sort_keys = true }) .. "\n"
 end
 
 ---@param path string
@@ -66,35 +98,65 @@ local function write_atomic(path, text)
   return ok == true, rename_err
 end
 
+--- Read the file again, change the data, write (read-merge-write).
 ---@param root string
----@return review.Marks?, string?
-function M.load_marks(root)
-  return decode(read_file(M.marks_path(root)))
+---@param doc review.StoreDoc
+---@param change fun(data: table): table
+---@return boolean, string?
+local function update(root, doc, change)
+  local path = path_of(root, doc)
+  local data, err = decode(doc, read_file(path))
+  if not data then
+    return false, err
+  end
+  return write_atomic(path, encode(doc, change(data)))
 end
 
---- Read the file again, apply the patch, write. Errors if the file cannot be read or has an unknown version.
+---@class review.StoreData
+---@field marks review.Marks
+---@field comments review.Comment[]
+
+---@param root string
+---@return review.StoreData?, string?
+function M.load(root)
+  local marks, marks_err = decode(MARKS, read_file(path_of(root, MARKS)))
+  local list, comments_err = decode(COMMENTS, read_file(path_of(root, COMMENTS)))
+  if not (marks and list) then
+    return nil, marks_err or comments_err
+  end
+  return { marks = marks, comments = list }
+end
+
 ---@param root string
 ---@param patch review.MarkPatch
 ---@return boolean, string?
 function M.save_marks(root, patch)
-  local path = M.marks_path(root)
-  local marks, err = decode(read_file(path))
-  if not marks then
-    return false, err
-  end
-  return write_atomic(path, encode(toggle.apply(marks, patch)))
+  return update(root, MARKS, function(marks)
+    return toggle.apply(marks, patch)
+  end)
 end
 
---- Delete all marks. Errors if the file cannot be read or has an unknown version.
+---@param root string
+---@param patch review.CommentPatch
+---@return boolean, string?
+function M.save_comments(root, patch)
+  return update(root, COMMENTS, function(list)
+    return comments.apply(list, patch)
+  end)
+end
+
+--- Delete all marks and comments. A file with an unknown version is not changed.
 ---@param root string
 ---@return boolean, string?
-function M.clear_marks(root)
-  local path = M.marks_path(root)
-  local marks, err = decode(read_file(path))
-  if not marks then
-    return false, err
+function M.clear(root)
+  local function empty(doc)
+    return function()
+      return doc.empty()
+    end
   end
-  return write_atomic(path, encode({}))
+  local ok, err = update(root, MARKS, empty(MARKS))
+  local ok_comments, err_comments = update(root, COMMENTS, empty(COMMENTS))
+  return ok and ok_comments, err or err_comments
 end
 
 return M

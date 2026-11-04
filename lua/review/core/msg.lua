@@ -83,6 +83,7 @@ local M = {}
 ---@field type "StoreLoaded"
 ---@field generation integer
 ---@field marks review.Marks
+---@field comments review.Comment[]
 
 ---@class review.Msg.StoreFailed
 ---@field type "StoreFailed"
@@ -181,8 +182,8 @@ function M.file_stepped(offset)
 end
 
 ---@return review.Msg.StoreLoaded
-function M.store_loaded(generation, marks)
-  return { type = "StoreLoaded", generation = generation, marks = marks }
+function M.store_loaded(generation, marks, comments)
+  return { type = "StoreLoaded", generation = generation, marks = marks, comments = comments or {} }
 end
 
 ---@return review.Msg.StoreFailed

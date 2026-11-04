@@ -12,7 +12,8 @@ local M = {}
 ---| review.Effect.RenderDiff
 ---| review.Effect.LoadStore
 ---| review.Effect.SaveMarks
----| review.Effect.ClearMarks
+---| review.Effect.ClearStore
+---| review.Effect.SaveComments
 ---| review.Effect.Notify
 ---| review.Effect.MoveCursor
 ---| review.Effect.StartWatcher
@@ -76,8 +77,16 @@ local M = {}
 ---@field root string
 ---@field patch review.MarkPatch
 
----@class review.Effect.ClearMarks
----@field type "ClearMarks"
+--- Apply the patch to comments.json (read-merge-write).
+---@class review.Effect.SaveComments
+---@field type "SaveComments"
+---@field generation integer
+---@field root string
+---@field patch review.CommentPatch
+
+--- Delete all marks and comments.
+---@class review.Effect.ClearStore
+---@field type "ClearStore"
 ---@field generation integer
 ---@field root string
 
@@ -186,9 +195,15 @@ function M.save_marks(generation, root, patch)
   return { type = "SaveMarks", generation = generation, root = root, patch = patch }
 end
 
----@return review.Effect.ClearMarks
-function M.clear_marks(generation, root)
-  return { type = "ClearMarks", generation = generation, root = root }
+---@param patch review.CommentPatch
+---@return review.Effect.SaveComments
+function M.save_comments(generation, root, patch)
+  return { type = "SaveComments", generation = generation, root = root, patch = patch }
+end
+
+---@return review.Effect.ClearStore
+function M.clear_store(generation, root)
+  return { type = "ClearStore", generation = generation, root = root }
 end
 
 ---@param level "info"|"warn"|"error"

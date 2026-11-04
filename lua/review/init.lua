@@ -87,7 +87,7 @@ function M.clear()
     vim.notify("review: open a review first (:Review)", vim.log.levels.WARN)
     return
   end
-  if vim.fn.confirm("Delete all review marks in this repo?", "&Yes\n&No", 2) == 1 then
+  if vim.fn.confirm("Delete all review marks and comments in this repo?", "&Yes\n&No", 2) == 1 then
     app.dispatch(msg.cleared())
   end
 end

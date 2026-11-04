@@ -345,7 +345,7 @@ describe("core.update", function()
     state = update(state, msg.store_loaded(1, { k = { created = "t" } }))
     local next_state, effects = update(state, msg.cleared())
     assert.are.same({}, next_state.marks)
-    assert.are.same({ "ClearMarks", "RenderExplorer", "RenderDiff" }, types(effects))
+    assert.are.same({ "ClearStore", "RenderExplorer", "RenderDiff" }, types(effects))
   end)
 
   it("checks the operation and the store on refresh", function()

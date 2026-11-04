@@ -145,7 +145,7 @@ local function store_write(write)
   return function(e, app)
     local ok, err = write(e)
     if not ok then
-      dispatch_later(app, msg.store_failed(e.generation, "marks.json: " .. tostring(err)))
+      dispatch_later(app, msg.store_failed(e.generation, "store: " .. tostring(err)))
     end
   end
 end
@@ -155,14 +155,18 @@ end
 local function store_handlers(ports)
   return {
     LoadStore = function(e, app)
-      local marks, err = ports.store.load_marks(e.root)
-      dispatch_later(app, marks and msg.store_loaded(e.generation, marks) or msg.store_failed(e.generation, err))
+      local data, err = ports.store.load(e.root)
+      local message = data and msg.store_loaded(e.generation, data.marks, data.comments)
+      dispatch_later(app, message or msg.store_failed(e.generation, tostring(err)))
     end,
     SaveMarks = store_write(function(e)
       return ports.store.save_marks(e.root, e.patch)
     end),
-    ClearMarks = store_write(function(e)
-      return ports.store.clear_marks(e.root)
+    ClearStore = store_write(function(e)
+      return ports.store.clear(e.root)
+    end),
+    SaveComments = store_write(function(e)
+      return ports.store.save_comments(e.root, e.patch)
     end),
   }
 end

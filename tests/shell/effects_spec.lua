@@ -48,13 +48,16 @@ local function fake_ports()
       stop = function() end,
     },
     store = {
-      load_marks = function()
-        return {}
+      load = function()
+        return { marks = {}, comments = {} }
       end,
       save_marks = function()
         return true
       end,
-      clear_marks = function()
+      clear = function()
+        return true
+      end,
+      save_comments = function()
         return true
       end,
     },
