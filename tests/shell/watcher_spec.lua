@@ -47,6 +47,18 @@ describe("shell.watcher", function()
     assert.are.same(1, calls)
   end)
 
+  it("calls back with the path of a written buffer", function()
+    local repo = helpers.temp_repo()
+    local saved
+    watcher.start(repo, function() end, function(path)
+      saved = path
+    end)
+    vim.cmd.edit(repo .. "/w.txt")
+    vim.cmd("silent write")
+    assert.are.same(repo .. "/w.txt", saved)
+    vim.cmd("bwipe!")
+  end)
+
   it("reports a missing repo but still watches focus", function()
     local ok, err = watcher.start(vim.fn.tempname(), function() end)
     assert.is_false(ok)

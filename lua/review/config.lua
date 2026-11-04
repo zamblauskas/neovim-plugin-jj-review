@@ -18,6 +18,7 @@ local M = {}
 ---@field comment string|false         -- diff buffer: comment on the line or visual range
 ---@field comment_block string|false   -- diff buffer: comment on the removed block at the cursor line
 ---@field delete_comment string|false  -- diff buffer: comment at the cursor line; explorer: orphaned comment
+---@field edit string|false            -- explorer: make the revision under the cursor the working copy
 ---@field next_unreviewed string|false  -- diff buffer: next unreviewed change in the file
 ---@field prev_unreviewed string|false  -- diff buffer: previous unreviewed change in the file
 ---@field next_file string|false  -- diff buffer: next file in the revision
@@ -38,6 +39,7 @@ M.defaults = {
     comment = "<leader>rc",
     comment_block = "<leader>rC",
     delete_comment = "<leader>rx",
+    edit = "<leader>re",
     next_unreviewed = "]r",
     prev_unreviewed = "[r",
     next_file = "]R",

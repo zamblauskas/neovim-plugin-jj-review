@@ -15,6 +15,8 @@ local M = {}
 ---| review.Effect.ClearStore
 ---| review.Effect.SaveComments
 ---| review.Effect.OpenCommentInput
+---| review.Effect.Snapshot
+---| review.Effect.JjEdit
 ---| review.Effect.Notify
 ---| review.Effect.MoveCursor
 ---| review.Effect.StartWatcher
@@ -126,6 +128,17 @@ local M = {}
 ---@field type "OpenCommentInput"
 ---@field title string
 ---@field draft review.CommentDraft
+
+--- `jj util snapshot`. The new operation triggers a refresh through the watcher.
+---@class review.Effect.Snapshot
+---@field type "Snapshot"
+---@field root string
+
+--- `jj edit <change_id>`. Then buffers of changed files are checked (:checktime).
+---@class review.Effect.JjEdit
+---@field type "JjEdit"
+---@field root string
+---@field change_id string
 
 ---@class review.Effect.OpenTab
 ---@field type "OpenTab"
@@ -252,6 +265,16 @@ end
 ---@return review.Effect.OpenCommentInput
 function M.open_comment_input(title, draft)
   return { type = "OpenCommentInput", title = title, draft = draft }
+end
+
+---@return review.Effect.Snapshot
+function M.snapshot(root)
+  return { type = "Snapshot", root = root }
+end
+
+---@return review.Effect.JjEdit
+function M.jj_edit(root, change_id)
+  return { type = "JjEdit", root = root, change_id = change_id }
 end
 
 return M

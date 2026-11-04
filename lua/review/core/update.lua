@@ -10,7 +10,8 @@ local handlers = vim.tbl_extend(
   require("review.core.handlers.ui"),
   require("review.core.handlers.store"),
   require("review.core.handlers.review"),
-  require("review.core.handlers.comments")
+  require("review.core.handlers.comments"),
+  require("review.core.handlers.working_copy")
 )
 
 --- A message is stale when the review is closed, or when it answers an older open.

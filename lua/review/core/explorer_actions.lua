@@ -49,4 +49,11 @@ function M.toggle_file(target, now)
   return msg.toggle_requested({ type = "file", change_id = target.change_id, path = target.path }, now)
 end
 
+--- `jj edit`: the revision of a revision or file row. Comment rows: no action.
+---@param target review.ExplorerTarget
+---@return review.Msg?
+function M.edit(target)
+  return target.type ~= "comment" and msg.edit_requested(target.change_id) or nil
+end
+
 return M

@@ -25,6 +25,9 @@ local M = {}
 ---| review.Msg.CommentSubmitted
 ---| review.Msg.CommentDeleteRequested
 ---| review.Msg.CommentDeleted
+---| review.Msg.FileSaved
+---| review.Msg.EditRequested
+---| review.Msg.CommandFailed
 
 ---@class review.Msg.Opened
 ---@field type "Opened"
@@ -129,6 +132,22 @@ local M = {}
 ---@class review.Msg.CommentDeleted
 ---@field type "CommentDeleted"
 ---@field id string
+
+--- A buffer was written to `path` (absolute).
+---@class review.Msg.FileSaved
+---@field type "FileSaved"
+---@field generation integer
+---@field path string
+
+--- Make the revision the working copy (`jj edit`).
+---@class review.Msg.EditRequested
+---@field type "EditRequested"
+---@field change_id string
+
+--- A command run for the user failed (snapshot, edit).
+---@class review.Msg.CommandFailed
+---@field type "CommandFailed"
+---@field text string
 
 ---@class review.Msg.ContentLoaded
 ---@field type "ContentLoaded"
@@ -251,6 +270,23 @@ end
 ---@return review.Msg.CommentDeleted
 function M.comment_deleted(id)
   return { type = "CommentDeleted", id = id }
+end
+
+---@return review.Msg.FileSaved
+function M.file_saved(generation, path)
+  return { type = "FileSaved", generation = generation, path = path }
+end
+
+---@param change_id string
+---@return review.Msg.EditRequested
+function M.edit_requested(change_id)
+  return { type = "EditRequested", change_id = change_id }
+end
+
+---@param text string
+---@return review.Msg.CommandFailed
+function M.command_failed(text)
+  return { type = "CommandFailed", text = text }
 end
 
 return M

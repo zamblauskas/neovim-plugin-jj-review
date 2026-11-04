@@ -1,6 +1,7 @@
--- Watcher port (Observer): turns outside events into one callback.
+-- Watcher port (Observer): turns outside events into callbacks.
 --   - `.jj/repo/op_heads/heads/` changes (a jj command ran), debounced;
---   - Neovim gets focus, or a review buffer gets focus.
+--   - Neovim gets focus, or a review buffer gets focus;
+--   - a buffer is written (separate callback with its path).
 
 local M = {}
 
@@ -54,20 +55,29 @@ local function watch_dir(dir, on_change)
 end
 
 ---@param on_change fun()
-local function watch_focus(on_change)
+---@param on_save fun(path: string)
+local function watch_editor(on_change, on_save)
   local group = vim.api.nvim_create_augroup(GROUP, { clear = true })
   vim.api.nvim_create_autocmd("FocusGained", { group = group, callback = on_change })
   vim.api.nvim_create_autocmd("BufEnter", { group = group, pattern = "review://*", callback = on_change })
+  vim.api.nvim_create_autocmd("BufWritePost", {
+    group = group,
+    callback = function(args)
+      local name = vim.api.nvim_buf_get_name(args.buf)
+      on_save(vim.uv.fs_realpath(name) or name)
+    end,
+  })
 end
 
 --- Start watching. Focus checks always work; returns false and a reason if the file watcher does not.
 ---@param root string
 ---@param on_change fun()
+---@param on_save? fun(path: string)
 ---@return boolean, string?
-function M.start(root, on_change)
+function M.start(root, on_change, on_save)
   M.stop()
   local notify = debounced(on_change)
-  watch_focus(notify)
+  watch_editor(notify, on_save or function() end)
   local ok, dir = pcall(M.repo_dir, root)
   if not ok then
     return false, tostring(dir)

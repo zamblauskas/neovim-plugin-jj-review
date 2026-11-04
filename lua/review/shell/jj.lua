@@ -1,4 +1,5 @@
 -- JJ port. Reads never snapshot the working copy, so they never create an operation.
+-- Only `snapshot` and `edit` write (and snapshot): they run without --ignore-working-copy.
 -- All functions except `run_cb` must be called inside `async.run`.
 
 local async = require("review.shell.lib.async")
@@ -11,12 +12,15 @@ local M = {}
 ---@field stderr string
 ---@field args string[]
 
-local GLOBAL_ARGS = { "--ignore-working-copy", "--no-pager", "--color=never" }
+local GLOBAL_ARGS = { "--no-pager", "--color=never" }
+local READ_ARGS = { "--ignore-working-copy" }
 
 ---@param args string[]
+---@param write boolean
 ---@return string[]
-local function command(args)
-  return vim.list_extend(vim.list_extend({ "jj" }, GLOBAL_ARGS), args)
+local function command(args, write)
+  local base = vim.list_extend({ "jj" }, GLOBAL_ARGS)
+  return vim.list_extend(write and base or vim.list_extend(base, READ_ARGS), args)
 end
 
 ---@param args string[]
@@ -27,14 +31,16 @@ local function to_result(args, obj)
 end
 
 --- Run jj in `cwd`, callback style. `done` runs in the main loop (API calls are safe).
+--- `write`: may snapshot the working copy (no --ignore-working-copy).
 ---@param cwd string
 ---@param args string[]
 ---@param done fun(result: review.JjResult)
-function M.run_cb(cwd, args, done)
+---@param write? boolean
+function M.run_cb(cwd, args, done, write)
   local on_exit = vim.schedule_wrap(function(obj)
     done(to_result(args, obj))
   end)
-  local ok, err = pcall(vim.system, command(args), { cwd = cwd, text = true }, on_exit)
+  local ok, err = pcall(vim.system, command(args, write or false), { cwd = cwd, text = true }, on_exit)
   if not ok then
     done({ ok = false, stdout = "", stderr = tostring(err), args = args })
   end
@@ -91,6 +97,31 @@ end
 ---@return review.JjResult
 function M.file_show(root, commit_id, path)
   return M.run(root, { "file", "show", "-r", commit_id, "--", root_file(path) })
+end
+
+--- Run a command that writes (snapshots the working copy).
+---@param cwd string
+---@param args string[]
+---@return review.JjResult
+local function run_write(cwd, args)
+  return async.await(function(done)
+    M.run_cb(cwd, args, done, true)
+  end)
+end
+
+--- Snapshot the working copy (after a save).
+---@param root string
+---@return review.JjResult
+function M.snapshot(root)
+  return run_write(root, { "util", "snapshot" })
+end
+
+--- Make the revision the working copy.
+---@param root string
+---@param change_id string
+---@return review.JjResult
+function M.edit(root, change_id)
+  return run_write(root, { "edit", change_id })
 end
 
 return M

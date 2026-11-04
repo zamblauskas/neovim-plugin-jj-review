@@ -56,6 +56,7 @@ local ROW_ACTIONS = {
     "Toggle reviewed: file",
   },
   delete_comment = { actions.delete_comment, "Delete orphaned comment" },
+  edit = { actions.edit, "Make the revision the working copy (jj edit)" },
 }
 
 ---@param buf integer

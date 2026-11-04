@@ -153,6 +153,38 @@ local function store_write(write)
   end
 end
 
+--- Handler for a jj command that writes. Failure → CommandFailed; success → `on_ok`.
+---@param run fun(e: table): review.JjResult
+---@param on_ok? fun()
+---@return fun(effect: review.Effect, app: review.App)
+local function jj_write(run, on_ok)
+  return function(e, app)
+    async.run(function()
+      local result = run(e)
+      if not result.ok then
+        app.dispatch(msg.command_failed("jj failed: " .. vim.trim(result.stderr)))
+      elseif on_ok then
+        on_ok()
+      end
+    end, notify_error)
+  end
+end
+
+---@param ports review.Ports
+---@return table<string, fun(effect: review.Effect, app: review.App)>
+local function write_handlers(ports)
+  return {
+    Snapshot = jj_write(function(e)
+      return ports.jj.snapshot(e.root)
+    end),
+    JjEdit = jj_write(function(e)
+      return ports.jj.edit(e.root, e.change_id)
+    end, function()
+      vim.cmd.checktime()
+    end),
+  }
+end
+
 ---@param ports review.Ports
 ---@return table<string, fun(effect: review.Effect, app: review.App)>
 local function store_handlers(ports)
@@ -181,6 +213,8 @@ local function watcher_handlers(ports)
     StartWatcher = function(e, app)
       local ok, err = ports.watcher.start(e.root, function()
         app.dispatch(msg.refresh_requested(e.generation))
+      end, function(path)
+        app.dispatch(msg.file_saved(e.generation, path))
       end)
       if not ok then
         vim.notify("review: no auto-refresh on jj changes, only on focus: " .. tostring(err), vim.log.levels.WARN)
@@ -249,6 +283,7 @@ function M.new(ports, opts)
     repo_handlers(ports),
     revision_handlers(ports, opts or { max_parallel_jj = 4 }),
     store_handlers(ports),
+    write_handlers(ports),
     watcher_handlers(ports),
     tab_handlers(ports),
     diff_handlers(ports)

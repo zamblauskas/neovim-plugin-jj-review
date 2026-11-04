@@ -106,6 +106,21 @@ describe("review (end to end)", function()
     assert.is_false(vim.bo.modifiable)
   end)
 
+  it("snapshots and refreshes after a save in working-copy mode", function()
+    open_one_file_review()
+    vim.api.nvim_buf_set_lines(0, 0, -1, false, { "hello", "added line" })
+    vim.cmd("silent write")
+    vim.wait(5000, function()
+      return vim.iter(explorer_lines()):any(function(line)
+        return line:find("0/2", 1, true) ~= nil
+      end)
+    end, 20)
+    local counts = vim.iter(explorer_lines()):any(function(line)
+      return line:find("0/2", 1, true) ~= nil
+    end)
+    assert.is_true(counts)
+  end)
+
   it("removes review keymaps from the real buffer on close", function()
     open_one_file_review()
     local buf = vim.api.nvim_get_current_buf()
