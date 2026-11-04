@@ -136,3 +136,8 @@ Status: done.
 - `?` help in the explorer.
 - `keymaps` and `icons` config tables.
 - README with install and usage.
+
+Steps (one revision each): config (icons, explorer keys, strict validation); help and configurable explorer keys;
+README.
+
+Status: done.

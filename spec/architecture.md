@@ -60,6 +60,7 @@ lua/review/
     open_file.lua       show the open file; follow it after a stack or diff change (commit or mode)
     modes.lua           commit on disk; view or working-copy mode
     explorer_cursor.lua explorer cursor row after a redraw
+    keymap_docs.lua     key descriptions by section (keymap desc, help)
     comments.lua        comment types, patch, anchor lines, placement: found / outdated / orphaned
     comment_drafts.lua  comment target → anchor, keys, snippet, title
     folds.lua           explorer fold state: user choice, default rule
@@ -77,6 +78,8 @@ lua/review/
     diff.lua            jj diff --git output → file diffs
   view/
     explorer.lua        state → explorer lines, highlights, row targets
+    help.lua            configured keymaps → help lines
+    rows.lua            chunk rows → lines and highlights
     diff.lua            file diff + marks + comments → extmark specs
   shell/
     lib/
@@ -98,6 +101,7 @@ lua/review/
     watcher.lua         op_heads watcher + focus autocmds
     keymaps.lua         buffer-local keymaps → messages
     comment_input.lua   float window
+    help.lua            help float (keymaps)
 tests/
   core/  lib/  parse/  view/  shell/   (mirror of lua/review)
   helpers.lua                    run_async, temp JJ repo
@@ -248,11 +252,15 @@ require("review").setup({
   max_parallel_jj = 4,
   explorer_width = 40,
   keymaps = { toggle = "<leader>rr", ... },  -- a key set to false is not mapped
-  icons = { reviewed = "✅", comment = "💬", warning = "⚠", working_copy = "◆" },
+  icons = { reviewed = "✅", comment = "💬", warning = "⚠", working_copy = "◆", mark = "✓" },
 })
 ```
 
+Full defaults: `lua/review/config.lua` and the README. Explorer keys (`enter`, `quit`, `help`) are config keys too.
+
 Config is validated in `setup()` (`vim.validate`) and stored in the state. Core reads it from the state, not from a global.
+An unknown option name is an error (typos). A key is a string or `false`. Widths and limits are positive integers.
+Key descriptions come from one table (`core/keymap_docs.lua`), used for keymap `desc` and the `?` help.
 
 ## Tooling
 

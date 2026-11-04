@@ -139,7 +139,7 @@ The cursor does not move after a mark. Use `]r` to go to the next unreviewed lin
 | `<leader>rf` | Toggle reviewed: file under the cursor |
 | `<leader>rx` | Delete the orphaned comment under the cursor |
 | `q` | Close review |
-| `?` | Help |
+| `?` | Help: a float with all configured keymaps by section. `q`, `<Esc>` or `?` closes it. |
 
 ## Commands
 
