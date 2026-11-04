@@ -52,18 +52,22 @@ lua/review/
     update.lua          update(state, msg) → state, effects (dispatch table)
     handlers/           one file per message group (stack, marks, comments, ui)
     stack.lua           remove empty, check linear, order
-    keys.lua            line keys
+    keys.lua            line keys (computed once per diff, kept on the diff lines)
     counts.lua          counts per file, revision, stack
-    toggle.lua          toggle rules → new mark set
+    toggle.lua          toggle rules → mark patch {set, unset}; apply
+    targets.lua         toggle target (line, range, block, file) → keys
+    navigation.lua      next / previous unreviewed change
     comments.lua        lookup: found / outdated / orphaned
     folds.lua           explorer fold state: user choice, default rule
     file_tree.lua       files → tree entries in display order (explorer, ]R)
     explorer_actions.lua  (action, row target) → message
     lookup.lua          revision by change id, file by path
-    changes.lua         positions of changes in the new text
+    changes.lua         segments (added line, removed block) placed on buffer lines
   lib/
     tbl.lua             pure table helpers: with (immutable update)
     list.lua            pure list helpers: pluck, index_by
+    text.lua            display width, truncate
+    color.lua           blend
   parse/
     log.lua             jj log template output → revisions
     diff.lua            jj diff --git output → file diffs
@@ -76,12 +80,14 @@ lua/review/
       schedule.lua      once_per_tick (coalesce calls into one vim.schedule)
       semaphore.lua     run at most N async tasks at once (max_parallel_jj)
     jj.lua              JJ port adapter: build args, run with vim.system
-    store.lua           load, merge, atomic save of JSON
+    store.lua           marks.json: load, read-merge-write with a patch, atomic rename
+    clock.lua           clock port: now()
     effects.lua         effect interpreter, render batching
     apply.lua           apply view specs to buffers (namespaces)
     layout.lua          review tab port (Facade): tab page, diff window
     explorer.lua        explorer window port (only owner of its buffer and window)
     diff.lua            diff buffer port: review:// scratch buffers, render
+    diff_keymaps.lua    diff buffer keymaps → messages
     highlights.lua      highlight groups (default links)
     watcher.lua         op_heads watcher + focus autocmds
     keymaps.lua         buffer-local keymaps → messages
@@ -113,21 +119,23 @@ See `core/state.lua` (`review.State`). Main fields: `config`, `open`, `generatio
 
 ## Messages
 
-v0.2 has the lifecycle messages (no `Cleared`), the JJ messages, `FoldToggled`, `FileOpened`, `FileStepped`. The rest is the plan.
-A failed `jj diff` or `jj file show` is a `JjFailed` (stack error state).
+v0.3 has the lifecycle and JJ messages, `StoreLoaded{marks}`, `StoreFailed{error}`, `ToggleRequested{target, now}`,
+`FoldToggled`, `FileOpened`, `FileStepped`, `UnreviewedStepped{change_id, path, line, offset}`. The rest is the plan.
+A failed `jj diff` or `jj file show` is a `JjFailed` (stack error state). Messages that make marks carry `now`
+(core has no clock).
 
 | Group | Messages |
 |---|---|
 | Lifecycle | `Opened{cwd, revset}`, `Closed`, `Cleared` |
 | JJ | `RootResolved{root}`, `OpChecked{op_id}`, `StackLoaded{revisions}`, `DiffLoaded{commit_id, files}`, `ContentLoaded{commit_id, path, lines}`, `JjFailed{stderr}` |
-| Store | `StoreLoaded{marks, comments}` |
-| Review | `ToggleRequested{target}`, `CommentSubmitted{anchor, text}`, `CommentDeleted{id}` |
+| Store | `StoreLoaded{marks, comments}`, `StoreFailed{error}` |
+| Review | `ToggleRequested{target, now}`, `UnreviewedStepped{change_id, path, line, offset}`, `CommentSubmitted{anchor, text}`, `CommentDeleted{id}` |
 | UI | `FoldToggled{change_id}`, `FileOpened{change_id, path}`, `FileStepped{offset}`, `EditRequested{change_id}` |
 
 ## Effects
 
-v0.2 has `ResolveRoot`, `CheckOp`, `LoadStack`, `LoadDiff`, `LoadContent`, `OpenTab`, `CloseTab`, `OpenBuffer`,
-`RenderExplorer`, `RenderDiff`. The rest is the plan. Effects for JJ carry `generation` and `root`.
+v0.3 has `ResolveRoot`, `CheckOp`, `LoadStack`, `LoadDiff`, `LoadContent`, `LoadStore`, `SaveMarks`, `ClearMarks`,
+`OpenTab`, `CloseTab`, `OpenBuffer`, `MoveCursor`, `RenderExplorer`, `RenderDiff`, `Notify`. The rest is the plan. Effects for JJ carry `generation` and `root`.
 
 | Effect | Result message |
 |---|---|
@@ -137,7 +145,9 @@ v0.2 has `ResolveRoot`, `CheckOp`, `LoadStack`, `LoadDiff`, `LoadContent`, `Open
 | `LoadDiff{commit_id}` | `DiffLoaded` or `JjFailed` |
 | `LoadContent{commit_id, path}` | `ContentLoaded` or `JjFailed` |
 | `JjEdit{change_id}` | (watcher sees new operation → `OpChecked`) |
-| `LoadStore` / `SaveMarks` / `SaveComments` | `StoreLoaded` / none |
+| `LoadStore{root}` | `StoreLoaded` or `StoreFailed` |
+| `SaveMarks{root, patch}` / `ClearMarks{root}` / `SaveComments` | none, or `StoreFailed` |
+| `MoveCursor{line}` | none |
 | `OpenTab` / `CloseTab` | none |
 | `RenderExplorer` / `RenderDiff` | none |
 | `OpenBuffer{change_id, path, lines, cursor_line}` (mode added in v0.6) | none |

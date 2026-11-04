@@ -78,6 +78,11 @@ The core value. You review a static stack and see progress.
 
 Features: F-03 (complete), F-06, F-07, F-08, F-09, F-16.
 
+Steps (one revision each): line keys; counts and toggle; store; toggle keys; diff view state; explorer counts and
+default fold; `]r` / `[r`; `:Review clear`.
+
+Status: done.
+
 ## v0.4 — Live stack
 
 The agent rewrites the stack. The view follows, and marks survive.

@@ -38,8 +38,11 @@
   - `💬` one comment or more in the file or revision.
   - `⚠` outdated or orphaned comment.
   - `◆` revision is the working copy (`@`).
-- Default fold: only the oldest revision with unreviewed lines is unfolded. (v0.2: the oldest revision.)
-  A fold you set stays until the review closes.
+- Default fold: only the oldest revision with unreviewed lines is unfolded. It is computed once per stack load,
+  when all diffs are loaded, so a revision does not close while you review it. Before that, the oldest revision is
+  open. A fold you set stays until the review closes.
+- Counts are right-aligned to the explorer width. A long name is cut with `…`. The stack count shows when all
+  diffs are loaded.
 - Orphaned comments section at the bottom. Hidden if empty.
 
 ### Error state
@@ -76,12 +79,14 @@ Visual states:
 | Added line, not reviewed | Green background |
 | Added line, reviewed | Sign `✓`, dimmed green |
 | Removed block, not reviewed | Red virtual lines above the next real line |
-| Removed block, reviewed | Red virtual lines dimmed, `✓` prefix |
-| Removed block, partly reviewed | Prefix `3/4` |
+| Removed block, reviewed | Red virtual lines dimmed, `✓` in the gutter of the first line |
+| Removed block, partly reviewed | `3/4` in the gutter of the first line |
 | Comment | Virtual lines below the anchor line, `💬` prefix |
 | Outdated comment | Virtual lines at the original line number, `⚠ outdated` prefix, other color |
 
-Dim can be turned off in config.
+Dim can be turned off in config (`dim_reviewed = false`). Dim colors are a 50% blend of `DiffAdd` / `DiffDelete`
+with the `Normal` background. Removed lines start at the left edge with a gutter, so their text aligns with the
+buffer text.
 
 Placement rules:
 - A removed block attaches to the next real line.
@@ -112,12 +117,12 @@ Buffer-local. Only in review buffers.
 | Key | Action |
 |---|---|
 | `<leader>rr` | Toggle reviewed: line, or visual range |
-| `<leader>rR` | Toggle reviewed: removed block above the cursor |
+| `<leader>rR` | Toggle reviewed: removed block attached to the cursor line (above or below it) |
 | `<leader>rf` | Toggle reviewed: file |
 | `<leader>rc` | Add comment: line, or visual range. Unchanged lines are allowed. |
 | `<leader>rC` | Add comment: removed block above the cursor |
 | `<leader>rx` | Delete comment under the cursor |
-| `]r` / `[r` | Next / previous unreviewed line or block, in this file only |
+| `]r` / `[r` | Next / previous unreviewed line or block, in this file only. No wrap. A block: its attach line. |
 | `]R` / `[R` | Next / previous file in the revision |
 
 No key to change revision. Use the explorer.
@@ -139,4 +144,4 @@ The cursor does not move after a mark. Use `]r` to go to the next unreviewed lin
 |---|---|
 | `:Review [revset]` | Open the explorer for the stack. Default revset: `(trunk()..@)::` |
 | `:Review close` | Close the explorer and review buffers |
-| `:Review clear` | Delete all marks and comments in the repo. Asks for confirmation. |
+| `:Review clear` | Delete all marks and comments in the repo. Asks for confirmation. Needs an open review. |

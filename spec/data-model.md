@@ -7,7 +7,8 @@ One diff engine: JJ. One call per revision: `jj diff -r <commit_id> --git -w --c
 - So counts for the full stack need no file content.
 - The new text (`jj file show`) is read only for the file open in view mode.
 
-Lines with whitespace-only changes are not reviewable.
+Lines with whitespace-only changes are not reviewable. Blank added or removed lines (empty after whitespace is
+removed) are not reviewable: no key, no count.
 
 ## Line key
 
@@ -66,15 +67,16 @@ The value is an object, so v1 can add `last_seen` (F-21).
 - File: reviewable lines in the file diff whose key is in `marks`, over all reviewable lines.
 - Revision: sum of its files.
 - Stack: sum of its revisions.
-- Binary file: total 1. Reviewed if the file key is marked. File key: `b | path | hash(new content)`.
+- Binary file: total 1. Reviewed if the file key is marked. File key: `b | path | blob`. `blob` is the new git
+  blob hash from the `index` line of the diff (the old one for a deleted file). No content is loaded.
 
 ## Toggle rules
 
 | Target | Rule |
 |---|---|
 | Line | Toggle its key. |
-| Visual range | Added lines in the range. If one or more are unmarked, mark all. Else unmark all. |
-| Removed block | Same rule over the keys of all removed lines in the block. |
+| Visual range | Added lines in the range, and removed blocks attached to lines in the range. If one or more are unmarked, mark all. Else unmark all. |
+| Removed block | Same rule over the keys of all removed lines in the block attached to the cursor line (above or below it). |
 | File | Same rule over all reviewable keys in the file diff. |
 
 Context lines in a range are skipped.
@@ -120,5 +122,6 @@ For each comment, in the open revision and file:
 
 The plugin and the agent can both have the files open. Rules:
 - The plugin writes with write-to-temp + rename (atomic).
-- The plugin reads the file again before each write and merges by key / comment id.
+- The plugin reads the file again before each write and merges by key / comment id. A toggle is a patch
+  `{ set, unset }`, applied to the file just read. So an unmark is not undone by a merge.
 - The agent only reads. Only the plugin writes.
