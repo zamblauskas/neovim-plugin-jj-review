@@ -22,6 +22,7 @@ local PAD_WIDTH = 400
 ---@field gutter_width integer  -- columns before the text (signs, numbers)
 ---@field marks review.Marks
 ---@field dim boolean           -- dim reviewed lines
+---@field comments review.Placement[]  -- comments shown in this file
 
 ---@param text string
 ---@param tabstop integer
@@ -135,6 +136,29 @@ local function segment_mark(segment, input)
   return removed_mark(segment, input)
 end
 
+local COMMENT_STYLES = {
+  found = { "💬 ", "ReviewComment" },
+  outdated = { "⚠ outdated: ", "ReviewCommentOutdated" },
+}
+
+--- Comment as virtual lines below its line. The first line has the prefix; the others are indented to match.
+---@param placement review.Placement
+---@param input review.DiffViewInput
+---@return review.ExtmarkSpec
+local function comment_mark(placement, input)
+  local style = COMMENT_STYLES[placement.status]
+  local indent = string.rep(" ", vim.fn.strdisplaywidth(style[1]))
+  local gutter = string.rep(" ", input.gutter_width)
+  local virt_lines = vim
+    .iter(ipairs(vim.split(placement.comment.text, "\n", { plain = true })))
+    :map(function(i, text)
+      return { { gutter }, { (i == 1 and style[1] or indent) .. text, style[2] } }
+    end)
+    :totable()
+  local row = math.max(math.min(assert(placement.line, "placed comment"), input.line_count), 1) - 1
+  return { row = row, opts = { virt_lines = virt_lines, virt_lines_leftcol = true } }
+end
+
 ---@param marks review.ExtmarkSpec[]
 ---@return integer
 local function topfill(marks)
@@ -154,6 +178,12 @@ function M.render(file, input)
   local marks = vim.tbl_map(function(segment)
     return segment_mark(segment, input)
   end, changes.segments(file, input.line_count))
+  vim.list_extend(
+    marks,
+    vim.tbl_map(function(placement)
+      return comment_mark(placement, input)
+    end, input.comments)
+  )
   return { extmarks = marks, topfill = topfill(marks) }
 end
 

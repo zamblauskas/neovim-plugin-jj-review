@@ -30,7 +30,7 @@ end
 local function input(fields)
   return vim.tbl_extend(
     "force",
-    { line_count = 8, tabstop = 4, gutter_width = 3, marks = {}, dim = true },
+    { line_count = 8, tabstop = 4, gutter_width = 3, marks = {}, dim = true, comments = {} },
     fields or {}
   )
 end
@@ -107,6 +107,35 @@ describe("view.diff", function()
 
     it("starts block lines at the left edge", function()
       assert.is_true(render({})[1].opts.virt_lines_leftcol)
+    end)
+  end)
+
+  describe("comments", function()
+    local f = file("@@ -1,1 +1,2 @@\n a\n+b\n")
+
+    ---@param status "found"|"outdated"
+    ---@param line integer
+    ---@return review.Placement
+    local function placement(status, line)
+      ---@diagnostic disable-next-line: missing-fields
+      return { comment = { text = "why\nhere" }, status = status, change_id = "c", path = "f", line = line }
+    end
+
+    it("draws a comment below its line with the gutter and the prefix", function()
+      local mark = view.render(f, input({ line_count = 2, comments = { placement("found", 2) } })).extmarks[2]
+      assert.are.same(1, mark.row)
+      assert.is_true(mark.opts.virt_lines_leftcol)
+      assert.is_falsy(mark.opts.virt_lines_above)
+      assert.are.same({
+        { { "   " }, { "💬 why", "ReviewComment" } },
+        { { "   " }, { "   here", "ReviewComment" } },
+      }, mark.opts.virt_lines)
+    end)
+
+    it("draws an outdated comment with its own style, clamped to the buffer", function()
+      local mark = view.render(f, input({ line_count = 2, comments = { placement("outdated", 9) } })).extmarks[2]
+      assert.are.same(1, mark.row)
+      assert.are.same({ "⚠ outdated: why", "ReviewCommentOutdated" }, assert(mark.opts.virt_lines)[1][2])
     end)
   end)
 end)

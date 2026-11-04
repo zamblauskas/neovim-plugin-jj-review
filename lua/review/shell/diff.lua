@@ -2,6 +2,7 @@
 -- The only owner of these buffers. A buffer is reused when the same file opens again.
 
 local apply = require("review.shell.apply")
+local comments = require("review.core.comments")
 local diff_keymaps = require("review.shell.diff_keymaps")
 local layout = require("review.shell.layout")
 local lookup = require("review.core.lookup")
@@ -147,6 +148,14 @@ local function gutter_width(buf)
   return vim.fn.getwininfo(win)[1].textoff
 end
 
+--- Comments shown in the open file.
+---@param state review.State
+---@return review.Placement[]
+local function file_comments(state)
+  local open = assert(state.open_file, "open file")
+  return comments.in_file(comments.place(state), open.change_id, open.path)
+end
+
 --- Draw the diff of the open file.
 ---@param state review.State
 function M.render(state)
@@ -160,6 +169,7 @@ function M.render(state)
     gutter_width = gutter_width(buf),
     marks = state.marks,
     dim = state.config.dim_reviewed,
+    comments = file_comments(state),
   }
   local rendered = view.render(file, input)
   apply.extmarks(buf, ns, rendered.extmarks)
