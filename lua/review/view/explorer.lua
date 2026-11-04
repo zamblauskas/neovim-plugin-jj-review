@@ -1,6 +1,7 @@
 -- Explorer view: state → lines and highlights. Pure.
 -- A row is a list of chunks { text, hl_group? }. `render` joins chunks and computes byte ranges.
 
+local comments = require("review.core.comments")
 local counts = require("review.core.counts")
 local file_tree = require("review.core.file_tree")
 local folds = require("review.core.folds")
@@ -53,6 +54,45 @@ local function count_chunks(count)
   end
   local group = counts.is_done(count) and "ReviewDone" or "ReviewCount"
   return { { count.reviewed .. "/" .. count.total, group } }
+end
+
+--- 💬 when a comment is shown there, ⚠ when one of them is outdated.
+---@param placements review.Placement[]
+---@return review.Chunk[]
+local function comment_icons(placements)
+  local icons = {}
+  if #placements > 0 then
+    table.insert(icons, { " 💬", "ReviewComment" })
+  end
+  if vim.iter(placements):any(function(p)
+    return p.status == "outdated"
+  end) then
+    table.insert(icons, { " ⚠", "ReviewCommentOutdated" })
+  end
+  return icons
+end
+
+--- Right part: count and comment icons; nil when empty.
+---@param count review.Count?
+---@param placements review.Placement[]
+---@return review.Row?
+local function right_chunks(count, placements)
+  local chunks = vim.list_extend(count_chunks(count) or {}, comment_icons(placements))
+  return #chunks > 0 and chunks or nil
+end
+
+---@class review.ExplorerContext
+---@field state review.State
+---@field placements review.Placement[]
+
+---@param ctx review.ExplorerContext
+---@param change_id string
+---@param path? string  -- nil: all files of the revision
+---@return review.Placement[]
+local function placements_at(ctx, change_id, path)
+  return vim.tbl_filter(function(p)
+    return p.change_id == change_id and (path == nil or p.path == path)
+  end, ctx.placements)
 end
 
 ---@param count review.Count?
@@ -131,60 +171,87 @@ end
 
 ---@param entry review.TreeEntry
 ---@param change_id string
----@param marks review.Marks
+---@param ctx review.ExplorerContext
 ---@return review.ExplorerEntry
-local function tree_entry(entry, change_id, marks)
+local function tree_entry(entry, change_id, ctx)
   local indent = TREE_INDENT .. string.rep("  ", entry.depth)
   if entry.type == "dir" then
     return { chunks = { { indent }, { entry.name, "ReviewDirectory" } } }
   end
   local file = assert(entry.file, "file entry")
-  local status, count = STATUS[file.status], counts.file(file, marks)
+  local status, count = STATUS[file.status], counts.file(file, ctx.state.marks)
   local chunks = { { indent }, unpack(done_icon(count)) }
   vim.list_extend(chunks, { { status[1] .. " ", status[2] }, { entry.name } })
   return {
     chunks = vim.list_extend(chunks, file_suffix(file)),
-    right = count_chunks(count),
+    right = right_chunks(count, placements_at(ctx, change_id, file.path)),
     target = { type = "file", change_id = change_id, path = file.path },
   }
 end
 
 --- Rows under an open revision: its file tree, or "Loading…" while the diff loads.
----@param state review.State
+---@param ctx review.ExplorerContext
 ---@param rev review.Revision
 ---@return review.ExplorerEntry[]
-local function file_entries(state, rev)
-  local files = state.diffs[rev.commit_id]
+local function file_entries(ctx, rev)
+  local files = ctx.state.diffs[rev.commit_id]
   if not files then
     return plain({ { { TREE_INDENT .. "Loading…", "ReviewDim" } } })
   end
   return vim.tbl_map(function(entry)
-    return tree_entry(entry, rev.change_id, state.marks)
+    return tree_entry(entry, rev.change_id, ctx)
   end, file_tree.build(files))
 end
 
----@param state review.State
+---@param ctx review.ExplorerContext
 ---@param revisions review.Revision[]
 ---@return review.ExplorerEntry[]
-local function revision_entries(state, revisions)
-  local entries = {}
+local function revision_entries(ctx, revisions)
+  local entries, state = {}, ctx.state
   for _, rev in ipairs(revisions) do
     local open = folds.is_open(state.folds, state.fold_default, revisions, rev.change_id)
     local files = state.diffs[rev.commit_id]
     local count = files and counts.files(files, state.marks)
     local target = { type = "revision", change_id = rev.change_id }
-    table.insert(entries, { chunks = revision_row(rev, open, count), right = count_chunks(count), target = target })
+    local right = right_chunks(count, placements_at(ctx, rev.change_id))
+    table.insert(entries, { chunks = revision_row(rev, open, count), right = right, target = target })
     if open then
-      vim.list_extend(entries, file_entries(state, rev))
+      vim.list_extend(entries, file_entries(ctx, rev))
     end
   end
   return entries
 end
 
----@param state review.State
+---@param placement review.Placement
+---@return review.ExplorerEntry
+local function orphan_entry(placement)
+  local c = placement.comment
+  local first_line = vim.split(c.text, "\n", { plain = true })[1]
+  local where = c.path .. ":" .. c.anchor.start_line
+  return {
+    chunks = { { "  ⚠ ", "ReviewCommentOutdated" }, { where .. " " }, { '"' .. first_line .. '"', "ReviewDim" } },
+    target = { type = "comment", id = c.id },
+  }
+end
+
+--- "Orphaned comments" section. Empty when there are none.
+---@param placements review.Placement[]
 ---@return review.ExplorerEntry[]
-local function body_entries(state)
-  local stack = state.stack
+local function orphan_entries(placements)
+  local orphans = vim.tbl_filter(function(p)
+    return p.status == "orphaned"
+  end, placements)
+  if #orphans == 0 then
+    return {}
+  end
+  local header = { { chunks = {} }, { chunks = { { "Orphaned comments (" .. #orphans .. ")", "ReviewHeader" } } } }
+  return vim.list_extend(header, vim.tbl_map(orphan_entry, orphans))
+end
+
+---@param ctx review.ExplorerContext
+---@return review.ExplorerEntry[]
+local function body_entries(ctx)
+  local stack = ctx.state.stack
   if stack.type == "loading" then
     return plain({ { { "Loading…", "ReviewDim" } } })
   elseif stack.type == "error" then
@@ -192,7 +259,7 @@ local function body_entries(state)
   elseif #stack.revisions == 0 then
     return plain({ { { "Nothing to review", "ReviewDim" } } })
   end
-  return revision_entries(state, stack.revisions)
+  return vim.list_extend(revision_entries(ctx, stack.revisions), orphan_entries(ctx.placements))
 end
 
 ---@param row review.Row
@@ -252,7 +319,8 @@ end
 ---@param state review.State
 ---@return review.View
 function M.render(state)
-  local entries = vim.list_extend(header_entries(state), body_entries(state))
+  local ctx = { state = state, placements = comments.place(state) }
+  local entries = vim.list_extend(header_entries(state), body_entries(ctx))
   local view = { lines = {}, highlights = {}, targets = {} }
   for i, entry in ipairs(entries) do
     local text, highlights = flatten(fit(entry, state.config.explorer_width), i - 1)

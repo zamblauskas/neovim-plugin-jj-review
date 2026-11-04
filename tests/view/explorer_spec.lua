@@ -153,6 +153,59 @@ describe("view.explorer", function()
     end)
   end)
 
+  describe("comments", function()
+    ---@param fields table
+    ---@return review.Comment
+    local function comment(fields)
+      return vim.tbl_extend("force", {
+        id = "c1",
+        anchor = { type = "line", side = "+", start_line = 1, end_line = 1 },
+        change_id = "uxlmfull",
+        revision_description = "",
+        path = "a",
+        keys = {},
+        snippet = "",
+        text = "why\nsecond line",
+        created = "t",
+      }, fields)
+    end
+
+    ---@param list review.Comment[]
+    ---@return review.View
+    local function render(list)
+      local state = state_with({ type = "ok", revisions = { rev("uxlm", "x") } })
+      return view.render(tbl.with(state, { diffs = { uxlm = { file("added", "a") } }, comments = list }))
+    end
+
+    it("shows 💬 on the file and the revision", function()
+      local v = render({ comment({}) })
+      assert.truthy(v.lines[4]:find("0/1 💬$"))
+      assert.truthy(v.lines[5]:find("0/1 💬$"))
+    end)
+
+    it("shows ⚠ for an outdated comment", function()
+      local v = render({ comment({ keys = { "+|a|gone|1" } }) })
+      assert.truthy(v.lines[5]:find("💬 ⚠$"))
+    end)
+
+    it("lists orphaned comments at the bottom with a target", function()
+      local v = render({
+        comment({
+          change_id = "gone",
+          keys = { "x" },
+          path = "old.txt",
+          anchor = { type = "line", side = "+", start_line = 42, end_line = 42 },
+        }),
+      })
+      assert.are.same({ "", "Orphaned comments (1)", '  ⚠ old.txt:42 "why"' }, vim.list_slice(v.lines, 6))
+      assert.are.same({ type = "comment", id = "c1" }, v.targets[8])
+    end)
+
+    it("has no orphan section without orphans", function()
+      assert.are.same(5, #render({}).lines)
+    end)
+  end)
+
   it("shows an empty stack", function()
     local v = view.render(state_with({ type = "ok", revisions = {} }))
     assert.are.same("Nothing to review", v.lines[4])

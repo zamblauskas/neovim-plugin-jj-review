@@ -94,6 +94,22 @@ describe("review (end to end)", function()
     assert.are.same(1, vim.tbl_count(assert(data).marks))
   end)
 
+  it("writes a comment to comments.json", function()
+    local repo = open_one_file_review()
+    vim.api.nvim_feedkeys(vim.keycode("<leader>rc"), "x", false)
+    vim.cmd("stopinsert")
+    vim.api.nvim_buf_set_lines(0, 0, -1, false, { "why hello?" })
+    local save = vim.iter(vim.api.nvim_buf_get_keymap(0, "n")):find(function(m)
+      return m.lhs == "<C-S>"
+    end)
+    assert(save, "<C-s> mapping").callback()
+    local data = assert(require("review.shell.store").load(repo))
+    assert.are.same(
+      { "why hello?", "a.txt", "hello" },
+      { data.comments[1].text, data.comments[1].path, data.comments[1].snippet }
+    )
+  end)
+
   it("refreshes when a jj command changes the stack", function()
     local repo = helpers.temp_repo()
     vim.fn.writefile({ "a" }, repo .. "/a.txt")
