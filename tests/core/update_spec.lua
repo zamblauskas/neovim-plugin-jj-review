@@ -50,7 +50,7 @@ describe("core.update", function()
   it("checks the operation after the root is found", function()
     local state, effects = update(opened_state(), msg.root_resolved(1, "/repo"))
     assert.are.same("/repo", state.root)
-    assert.are.same({ { type = "CheckOp", generation = 1, root = "/repo" } }, effects)
+    assert.are.same({ effect.load_store(1, "/repo"), effect.check_op(1, "/repo") }, effects)
   end)
 
   it("loads the stack when the operation changed", function()
@@ -187,6 +187,18 @@ describe("core.update", function()
       assert.are.equal(state, next_state)
       assert.are.same({}, effects)
     end)
+  end)
+
+  it("keeps loaded marks and renders", function()
+    local marks = { k = { created = "t" } }
+    local state, effects = update(opened_state(), msg.store_loaded(1, marks))
+    assert.are.same(marks, state.marks)
+    assert.are.same({ "RenderExplorer", "RenderDiff" }, types(effects))
+  end)
+
+  it("shows a store error", function()
+    local _, effects = update(opened_state(), msg.store_failed(1, "bad"))
+    assert.are.same({ effect.notify("error", "bad") }, effects)
   end)
 
   it("drops results of an older open", function()

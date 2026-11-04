@@ -11,7 +11,8 @@ local M = {}
 ---@param msg review.Msg.RootResolved
 ---@return review.State, review.Effect[]
 function M.RootResolved(state, msg)
-  return tbl.with(state, { root = msg.root }), { effect.check_op(state.generation, msg.root) }
+  return tbl.with(state, { root = msg.root }),
+    { effect.load_store(state.generation, msg.root), effect.check_op(state.generation, msg.root) }
 end
 
 --- Load the stack only when the operation changed.

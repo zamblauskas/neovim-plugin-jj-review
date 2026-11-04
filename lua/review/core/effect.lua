@@ -10,6 +10,9 @@ local M = {}
 ---| review.Effect.LoadContent
 ---| review.Effect.OpenBuffer
 ---| review.Effect.RenderDiff
+---| review.Effect.LoadStore
+---| review.Effect.SaveMarks
+---| review.Effect.Notify
 ---| review.Effect.OpenTab
 ---| review.Effect.CloseTab
 ---| review.Effect.RenderExplorer
@@ -54,6 +57,23 @@ local M = {}
 --- Draw the diff of the open file (`state.open_file`) on its buffer.
 ---@class review.Effect.RenderDiff
 ---@field type "RenderDiff"
+
+---@class review.Effect.LoadStore
+---@field type "LoadStore"
+---@field generation integer
+---@field root string
+
+--- Apply the patch to marks.json (read-merge-write).
+---@class review.Effect.SaveMarks
+---@field type "SaveMarks"
+---@field generation integer
+---@field root string
+---@field patch review.MarkPatch
+
+---@class review.Effect.Notify
+---@field type "Notify"
+---@field level "info"|"warn"|"error"
+---@field text string
 
 ---@class review.Effect.OpenTab
 ---@field type "OpenTab"
@@ -112,6 +132,24 @@ end
 ---@return review.Effect.RenderDiff
 function M.render_diff()
   return { type = "RenderDiff" }
+end
+
+---@return review.Effect.LoadStore
+function M.load_store(generation, root)
+  return { type = "LoadStore", generation = generation, root = root }
+end
+
+---@param patch review.MarkPatch
+---@return review.Effect.SaveMarks
+function M.save_marks(generation, root, patch)
+  return { type = "SaveMarks", generation = generation, root = root, patch = patch }
+end
+
+---@param level "info"|"warn"|"error"
+---@param text string
+---@return review.Effect.Notify
+function M.notify(level, text)
+  return { type = "Notify", level = level, text = text }
 end
 
 return M

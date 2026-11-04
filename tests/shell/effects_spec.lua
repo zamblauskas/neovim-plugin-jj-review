@@ -36,6 +36,19 @@ local function fake_ports()
         return ok("diff --git a/" .. commit_id .. ".txt b/" .. commit_id .. ".txt\nnew file mode 100644\n")
       end,
     },
+    diff = {
+      open = function() end,
+      close = function() end,
+      render = function() end,
+    },
+    store = {
+      load_marks = function()
+        return {}
+      end,
+      save_marks = function()
+        return true
+      end,
+    },
     layout = {
       open = function() end,
       close = function() end,

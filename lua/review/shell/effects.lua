@@ -14,6 +14,7 @@ local M = {}
 ---@field explorer table     -- review.shell.explorer
 ---@field layout table       -- review.shell.layout
 ---@field diff table         -- review.shell.diff
+---@field store table        -- review.shell.store
 
 ---@param err string
 local function notify_error(err)
@@ -125,6 +126,37 @@ local function revision_handlers(ports, opts)
   }
 end
 
+local NOTIFY_LEVELS = { info = vim.log.levels.INFO, warn = vim.log.levels.WARN, error = vim.log.levels.ERROR }
+
+--- Dispatch on the next tick, so a result never runs inside the dispatch that asked for it.
+---@param app review.App
+---@param message review.Msg
+local function dispatch_later(app, message)
+  vim.schedule(function()
+    app.dispatch(message)
+  end)
+end
+
+---@param ports review.Ports
+---@return table<string, fun(effect: review.Effect, app: review.App)>
+local function store_handlers(ports)
+  return {
+    LoadStore = function(e, app)
+      local marks, err = ports.store.load_marks(e.root)
+      dispatch_later(app, marks and msg.store_loaded(e.generation, marks) or msg.store_failed(e.generation, err))
+    end,
+    SaveMarks = function(e, app)
+      local ok, err = ports.store.save_marks(e.root, e.patch)
+      if not ok then
+        dispatch_later(app, msg.store_failed(e.generation, "marks.json: " .. tostring(err)))
+      end
+    end,
+    Notify = function(e)
+      vim.notify("review: " .. e.text, NOTIFY_LEVELS[e.level])
+    end,
+  }
+end
+
 ---@param ports review.Ports
 ---@return table<string, fun(effect: review.Effect, app: review.App)>
 local function ui_handlers(ports)
@@ -160,6 +192,7 @@ function M.new(ports, opts)
     "error",
     repo_handlers(ports),
     revision_handlers(ports, opts or { max_parallel_jj = 4 }),
+    store_handlers(ports),
     ui_handlers(ports)
   )
   return function(effect, app)

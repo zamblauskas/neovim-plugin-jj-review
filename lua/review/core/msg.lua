@@ -15,6 +15,8 @@ local M = {}
 ---| review.Msg.FileOpened
 ---| review.Msg.ContentLoaded
 ---| review.Msg.FileStepped
+---| review.Msg.StoreLoaded
+---| review.Msg.StoreFailed
 
 ---@class review.Msg.Opened
 ---@field type "Opened"
@@ -63,6 +65,16 @@ local M = {}
 ---@class review.Msg.FileStepped
 ---@field type "FileStepped"
 ---@field offset integer
+
+---@class review.Msg.StoreLoaded
+---@field type "StoreLoaded"
+---@field generation integer
+---@field marks review.Marks
+
+---@class review.Msg.StoreFailed
+---@field type "StoreFailed"
+---@field generation integer
+---@field error string
 
 ---@class review.Msg.ContentLoaded
 ---@field type "ContentLoaded"
@@ -130,6 +142,16 @@ end
 ---@return review.Msg.FileStepped
 function M.file_stepped(offset)
   return { type = "FileStepped", offset = offset }
+end
+
+---@return review.Msg.StoreLoaded
+function M.store_loaded(generation, marks)
+  return { type = "StoreLoaded", generation = generation, marks = marks }
+end
+
+---@return review.Msg.StoreFailed
+function M.store_failed(generation, error)
+  return { type = "StoreFailed", generation = generation, error = error }
 end
 
 return M
