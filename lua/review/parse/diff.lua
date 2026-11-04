@@ -9,6 +9,7 @@ local M = {}
 ---@field kind " "|"+"|"-"
 ---@field text string
 ---@field no_eol? true  -- "\ No newline at end of file" follows this line
+---@field key? string    -- line key of a reviewable line (core/keys.lua)
 
 ---@class review.Hunk
 ---@field old_start integer
@@ -22,6 +23,9 @@ local M = {}
 ---@field path string        -- new path (old path for a deleted file)
 ---@field old_path? string   -- renamed or copied only
 ---@field binary boolean
+---@field key? string        -- file key of a binary file (core/keys.lua)
+---@field old_blob? string   -- git blob hash of the old text (from the `index` line; zeros when none)
+---@field new_blob? string   -- git blob hash of the new text
 ---@field hunks review.Hunk[]
 
 local FILE_START = "diff --git "
@@ -35,6 +39,7 @@ local HEADER_FIELDS = {
   ["copy from "] = "copy_from",
   ["copy to "] = "copy_to",
   ["Binary files "] = "binary",
+  ["index "] = "index",
 }
 
 ---@param line string
@@ -102,11 +107,14 @@ end
 ---@return review.FileDiff
 local function parse_header(header_lines)
   local fields = header_fields(header_lines)
+  local old_blob, new_blob = (fields.index or ""):match("^(%x+)%.%.(%x+)")
   return {
     status = status_of(fields),
     path = fields.rename_to or fields.copy_to or header_path(header_lines[1]),
     old_path = fields.rename_from or fields.copy_from,
     binary = fields.binary ~= nil,
+    old_blob = old_blob,
+    new_blob = new_blob,
     hunks = {},
   }
 end

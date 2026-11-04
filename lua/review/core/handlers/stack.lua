@@ -1,6 +1,7 @@
 -- Handlers: find the repo, watch the operation, load the stack.
 
 local effect = require("review.core.effect")
+local keys = require("review.core.keys")
 local stack = require("review.core.stack")
 local tbl = require("review.lib.tbl")
 
@@ -54,7 +55,7 @@ end
 ---@param msg review.Msg.DiffLoaded
 ---@return review.State, review.Effect[]
 function M.DiffLoaded(state, msg)
-  local diffs = tbl.with(state.diffs, { [msg.commit_id] = msg.files })
+  local diffs = tbl.with(state.diffs, { [msg.commit_id] = vim.tbl_map(keys.annotate, msg.files) })
   return tbl.with(state, { diffs = diffs }), { effect.render_explorer() }
 end
 

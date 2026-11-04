@@ -21,6 +21,8 @@ describe("parse.diff", function()
       status = "added",
       path = "add.txt",
       binary = false,
+      old_blob = "0000000000",
+      new_blob = "3e757656cf",
       hunks = {
         { old_start = 0, old_count = 0, new_start = 1, new_count = 1, lines = { { kind = "+", text = "new" } } },
       },
@@ -61,7 +63,18 @@ describe("parse.diff", function()
   end)
 
   it("parses an added empty file without hunks", function()
-    assert.are.same({ status = "added", path = "newempty.txt", binary = false, hunks = {} }, files["newempty.txt"])
+    assert.are.same({
+      status = "added",
+      path = "newempty.txt",
+      binary = false,
+      old_blob = "0000000000",
+      new_blob = "e69de29bb2",
+      hunks = {},
+    }, files["newempty.txt"])
+  end)
+
+  it("reads the blob hashes of a binary file", function()
+    assert.are.same({ "88768efdf7", "3e3315e1b0" }, { files["b.bin"].old_blob, files["b.bin"].new_blob })
   end)
 
   it("parses binary files", function()
@@ -79,7 +92,14 @@ describe("parse.diff", function()
   end)
 
   it("keeps a whitespace-only change as a file without hunks", function()
-    assert.are.same({ status = "modified", path = "ws.txt", binary = false, hunks = {} }, files["ws.txt"])
+    assert.are.same({
+      status = "modified",
+      path = "ws.txt",
+      binary = false,
+      old_blob = "aa2c32af38",
+      new_blob = "02f5508497",
+      hunks = {},
+    }, files["ws.txt"])
   end)
 
   it("parses paths with spaces, quotes and non-ASCII characters", function()
