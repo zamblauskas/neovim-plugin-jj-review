@@ -111,28 +111,43 @@ local function visual_actions(file)
   }
 end
 
+---@alias review.MappedKey { [1]: string, [2]: string }  -- mode, lhs
+
 ---@param buf integer
 ---@param mode string
 ---@param actions table<string, fun(): review.Msg>
 ---@param app review.App
+---@return review.MappedKey[]
 local function map_all(buf, mode, actions, app)
-  local keymaps = app.state().config.keymaps
+  local keymaps, mapped = app.state().config.keymaps, {}
   for name, action in pairs(actions) do
     if keymaps[name] then
       vim.keymap.set(mode, keymaps[name], function()
         app.dispatch(action())
       end, { buffer = buf, desc = DESCRIPTIONS[name] })
+      table.insert(mapped, { mode, keymaps[name] })
     end
   end
+  return mapped
 end
 
+--- Set the review keymaps on `buf`. Returns them, so they can be deleted.
 ---@param buf integer
 ---@param file review.BufferFile
 ---@param app review.App
+---@return review.MappedKey[]
 function M.set(buf, file, app)
   local normal = vim.tbl_extend("error", toggle_actions(file), comment_actions(file), step_actions(file))
-  map_all(buf, "n", normal, app)
-  map_all(buf, "x", visual_actions(file), app)
+  return vim.list_extend(map_all(buf, "n", normal, app), map_all(buf, "x", visual_actions(file), app))
+end
+
+--- Delete keymaps set by `M.set`.
+---@param buf integer
+---@param mapped review.MappedKey[]
+function M.unset(buf, mapped)
+  for _, key in ipairs(mapped) do
+    pcall(vim.keymap.del, key[1], key[2], { buffer = buf })
+  end
 end
 
 return M

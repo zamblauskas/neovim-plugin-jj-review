@@ -76,7 +76,7 @@ describe("shell.diff", function()
     local state = tbl.with(app.state(), {
       stack = { type = "ok", revisions = { rev } },
       diffs = { c1 = { file } },
-      open_file = { change_id = "abc", path = "f" },
+      open_file = { change_id = "abc", path = "f", mode = "view" },
     })
     diff.open(effect.open_buffer("abc", "f", { "y", "z" }, 1), app)
     diff.render(state)

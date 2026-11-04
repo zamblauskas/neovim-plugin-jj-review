@@ -1,72 +1,26 @@
--- Diff buffer port: read-only scratch buffers `review://<change-id>/<path>`, shown in the diff window.
--- The only owner of these buffers. A buffer is reused when the same file opens again.
+-- Diff port: shows the open file in the diff window and draws its diff. Buffers come from shell/buffers.lua.
 
 local apply = require("review.shell.apply")
+local buffers = require("review.shell.buffers")
 local comments = require("review.core.comments")
-local diff_keymaps = require("review.shell.diff_keymaps")
 local layout = require("review.shell.layout")
 local lookup = require("review.core.lookup")
 local view = require("review.view.diff")
 
 local M = {}
 
-local ns = vim.api.nvim_create_namespace("review.diff")
-
----@type table<string, integer>  buffer by name
-local buffers = {}
-
----@param change_id string
----@param path string
----@return string
-local function buffer_name(change_id, path)
-  return "review://" .. change_id .. "/" .. path
-end
-
----@param name string
----@param path string  for the filetype
----@return integer
-local function create_buffer(name, path)
-  local buf = vim.api.nvim_create_buf(false, true)
-  vim.api.nvim_buf_set_name(buf, name)
-  vim.bo[buf].modifiable = false
-  local filetype = vim.filetype.match({ filename = path, buf = buf })
-  if filetype then
-    vim.bo[buf].filetype = filetype
-  end
-  return buf
-end
-
----@param e review.Effect.OpenBuffer
----@param app review.App
----@return integer
-local function buffer_for(e, app)
-  local name = buffer_name(e.change_id, e.path)
-  local buf = buffers[name]
-  if not (buf and vim.api.nvim_buf_is_valid(buf)) then
-    buf = create_buffer(name, e.path)
-    diff_keymaps.set(buf, { change_id = e.change_id, path = e.path }, app)
-    buffers[name] = buf
-  end
-  return buf
-end
-
----@param buf integer
----@param lines string[]
-local function set_lines(buf, lines)
-  vim.bo[buf].modifiable = true
-  vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
-  vim.bo[buf].modifiable = false
-end
-
---- View of `win` if it shows `buf`, else nil.
----@param win integer
----@param buf integer
+--- View of `win` if it shows a review buffer (an older version of the file), else nil.
+---@param win integer?
 ---@return vim.fn.winsaveview.ret?
-local function saved_view(win, buf)
-  if vim.api.nvim_win_get_buf(win) ~= buf then
+local function saved_view(win)
+  if not (win and vim.api.nvim_win_is_valid(win)) then
     return nil
   end
-  return vim.api.nvim_win_call(win, vim.fn.winsaveview)
+  local shown = vim.api.nvim_win_get_buf(win)
+  local is_review = vim.iter(buffers.registry()):any(function(_, entry)
+    return entry.buf == shown
+  end)
+  return is_review and vim.api.nvim_win_call(win, vim.fn.winsaveview) or nil
 end
 
 ---@param win integer
@@ -85,20 +39,21 @@ end
 ---@param e review.Effect.OpenBuffer
 ---@param app review.App
 function M.open(e, app)
-  local buf = buffer_for(e, app)
+  local saved = e.keep_view and saved_view(layout.handles().diff_win) or nil
+  local buf = buffers.acquire(e, app)
   local win = layout.diff_window(buf)
-  local saved = e.keep_view and saved_view(win, buf) or nil
-  set_lines(buf, e.lines)
   vim.api.nvim_win_set_buf(win, buf)
+  buffers.release_real_except(buf)
   vim.wo[win][0].signcolumn = "yes:1"
+  local line_count = vim.api.nvim_buf_line_count(buf)
   if saved then
-    return restore_view(win, saved, #e.lines)
+    return restore_view(win, saved, line_count)
   end
   vim.api.nvim_set_current_win(win)
-  vim.api.nvim_win_set_cursor(win, { math.min(e.cursor_line, #e.lines), 0 })
+  vim.api.nvim_win_set_cursor(win, { math.min(e.cursor_line, line_count), 0 })
 end
 
---- The open file is gone: an empty buffer in the diff window, then wipe all review buffers.
+--- The open file is gone: an empty buffer in the diff window, then release all review buffers.
 function M.close_file()
   local win = layout.handles().diff_win
   if win and vim.api.nvim_win_is_valid(win) then
@@ -132,9 +87,8 @@ local function open_file(state)
     return nil, nil
   end
   local rev = lookup.revision(state, open.change_id)
-  local buf = buffers[buffer_name(open.change_id, open.path)]
-  local valid_buf = (buf and vim.api.nvim_buf_is_valid(buf)) and buf or nil
-  return valid_buf, rev and lookup.file(state, rev, open.path)
+  local buf = open.mode and buffers.find(open.mode, open.change_id, open.path)
+  return buf or nil, rev and lookup.file(state, rev, open.path)
 end
 
 --- Columns before the text in the diff window (signs, numbers, folds). 0 if the window does not show `buf`.
@@ -156,11 +110,12 @@ local function file_comments(state)
   return comments.in_file(comments.place(state), open.change_id, open.path)
 end
 
---- Draw the diff of the open file.
+--- Draw the diff of the open file. A modified real buffer keeps its marks until it is saved: the diff is of
+--- the saved text, and the marks move with the text.
 ---@param state review.State
 function M.render(state)
   local buf, file = open_file(state)
-  if not (buf and file) then
+  if not (buf and file) or vim.bo[buf].modified then
     return
   end
   local input = {
@@ -172,23 +127,13 @@ function M.render(state)
     comments = file_comments(state),
   }
   local rendered = view.render(file, input)
-  apply.extmarks(buf, ns, rendered.extmarks)
+  apply.extmarks(buf, buffers.ns, rendered.extmarks)
   set_topfill(buf, rendered.topfill)
 end
 
---- Wipe all review buffers.
+--- Release all review buffers: wipe scratch buffers; remove marks and keymaps from real buffers.
 function M.close()
-  for _, buf in pairs(buffers) do
-    if vim.api.nvim_buf_is_valid(buf) then
-      vim.api.nvim_buf_delete(buf, { force = true })
-    end
-  end
-  buffers = {}
-end
-
----@return table<string, integer>
-function M.buffers()
-  return buffers
+  buffers.release_all()
 end
 
 return M
