@@ -15,4 +15,15 @@ function M.view(buf, ns, view)
   end
 end
 
+--- Replace all extmarks of `ns` in `buf` (full redraw). Marks start at column 0.
+---@param buf integer
+---@param ns integer
+---@param specs review.ExtmarkSpec[]
+function M.extmarks(buf, ns, specs)
+  vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
+  for _, spec in ipairs(specs) do
+    vim.api.nvim_buf_set_extmark(buf, ns, spec.row, 0, spec.opts)
+  end
+end
+
 return M

@@ -53,6 +53,31 @@ describe("shell.diff", function()
     assert.are.same({ 1, 0 }, vim.api.nvim_win_get_cursor(0))
   end)
 
+  it("draws the diff of the open file and sets topfill", function()
+    local rev = {
+      change_id = "abc",
+      short_id = "abc",
+      id_prefix = "a",
+      commit_id = "c1",
+      parents = {},
+      empty = false,
+      working_copy = false,
+      description = "",
+    }
+    local file =
+      require("review.parse.diff").parse("diff --git a/f b/f\n--- a/f\n+++ b/f\n@@ -1,2 +1,2 @@\n-x\n+y\n z\n")[1]
+    local state = tbl.with(fake_app().state(), {
+      stack = { type = "ok", revisions = { rev } },
+      diffs = { c1 = { file } },
+      open_file = { change_id = "abc", path = "f" },
+    })
+    diff.open(effect.open_buffer("abc", "f", { "y", "z" }, 1))
+    diff.render(state)
+    local marks = vim.api.nvim_buf_get_extmarks(0, -1, 0, -1, { details = true })
+    assert.are.same(2, #marks)
+    assert.are.same(1, vim.fn.winsaveview().topfill)
+  end)
+
   it("wipes its buffers on close", function()
     diff.open(effect.open_buffer("abc", "a.txt", { "x" }, 1))
     local buf = vim.api.nvim_get_current_buf()

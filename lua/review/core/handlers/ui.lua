@@ -48,7 +48,7 @@ end
 local function show(state, rev, file)
   local lines = known_lines(state, rev, file)
   if lines then
-    return { effect.open_buffer(rev.change_id, file.path, lines, changes.first_line(file)) }
+    return { effect.open_buffer(rev.change_id, file.path, lines, changes.first_line(file)), effect.render_diff() }
   end
   return { effect.load_content(state.generation, assert(state.root, "root not resolved"), rev.commit_id, file.path) }
 end

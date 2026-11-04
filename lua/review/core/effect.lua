@@ -9,6 +9,7 @@ local M = {}
 ---| review.Effect.LoadDiff
 ---| review.Effect.LoadContent
 ---| review.Effect.OpenBuffer
+---| review.Effect.RenderDiff
 ---| review.Effect.OpenTab
 ---| review.Effect.CloseTab
 ---| review.Effect.RenderExplorer
@@ -49,6 +50,10 @@ local M = {}
 ---@field path string
 ---@field lines string[]
 ---@field cursor_line integer  -- 1-based; the shell clamps it to the buffer
+
+--- Draw the diff of the open file (`state.open_file`) on its buffer.
+---@class review.Effect.RenderDiff
+---@field type "RenderDiff"
 
 ---@class review.Effect.OpenTab
 ---@field type "OpenTab"
@@ -102,6 +107,11 @@ end
 ---@return review.Effect.OpenBuffer
 function M.open_buffer(change_id, path, lines, cursor_line)
   return { type = "OpenBuffer", change_id = change_id, path = path, lines = lines, cursor_line = cursor_line }
+end
+
+---@return review.Effect.RenderDiff
+function M.render_diff()
+  return { type = "RenderDiff" }
 end
 
 return M

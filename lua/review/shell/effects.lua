@@ -142,6 +142,9 @@ local function ui_handlers(ports)
     RenderExplorer = schedule.once_per_tick(function(_, app)
       ports.explorer.render(app.state())
     end),
+    RenderDiff = schedule.once_per_tick(function(_, app)
+      ports.diff.render(app.state())
+    end),
   }
 end
 
