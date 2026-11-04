@@ -15,6 +15,8 @@ local M = {}
 ---| review.Effect.ClearMarks
 ---| review.Effect.Notify
 ---| review.Effect.MoveCursor
+---| review.Effect.StartWatcher
+---| review.Effect.StopWatcher
 ---| review.Effect.OpenTab
 ---| review.Effect.CloseTab
 ---| review.Effect.RenderExplorer
@@ -86,6 +88,15 @@ local M = {}
 ---@class review.Effect.MoveCursor
 ---@field type "MoveCursor"
 ---@field line integer
+
+--- Watch for jj operations and focus. Each event → RefreshRequested.
+---@class review.Effect.StartWatcher
+---@field type "StartWatcher"
+---@field generation integer
+---@field root string
+
+---@class review.Effect.StopWatcher
+---@field type "StopWatcher"
 
 ---@class review.Effect.OpenTab
 ---@field type "OpenTab"
@@ -173,6 +184,16 @@ end
 ---@return review.Effect.MoveCursor
 function M.move_cursor(line)
   return { type = "MoveCursor", line = line }
+end
+
+---@return review.Effect.StartWatcher
+function M.start_watcher(generation, root)
+  return { type = "StartWatcher", generation = generation, root = root }
+end
+
+---@return review.Effect.StopWatcher
+function M.stop_watcher()
+  return { type = "StopWatcher" }
 end
 
 return M

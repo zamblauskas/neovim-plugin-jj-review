@@ -41,6 +41,12 @@ local function fake_ports()
       close = function() end,
       render = function() end,
     },
+    watcher = {
+      start = function()
+        return true
+      end,
+      stop = function() end,
+    },
     store = {
       load_marks = function()
         return {}

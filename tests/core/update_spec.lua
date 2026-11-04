@@ -51,7 +51,10 @@ describe("core.update", function()
   it("checks the operation after the root is found", function()
     local state, effects = update(opened_state(), msg.root_resolved(1, "/repo"))
     assert.are.same("/repo", state.root)
-    assert.are.same({ effect.load_store(1, "/repo"), effect.check_op(1, "/repo") }, effects)
+    assert.are.same(
+      { effect.load_store(1, "/repo"), effect.check_op(1, "/repo"), effect.start_watcher(1, "/repo") },
+      effects
+    )
   end)
 
   it("loads the stack when the operation changed", function()
@@ -254,6 +257,12 @@ describe("core.update", function()
     assert.are.same({ "ClearMarks", "RenderExplorer", "RenderDiff" }, types(effects))
   end)
 
+  it("checks the operation and the store on refresh", function()
+    local state = update(opened_state(), msg.root_resolved(1, "/repo"))
+    local _, effects = update(state, msg.refresh_requested(1))
+    assert.are.same({ effect.check_op(1, "/repo"), effect.load_store(1, "/repo") }, effects)
+  end)
+
   it("drops results of an older open", function()
     local reopened = update(opened_state(), msg.opened("/repo"))
     local state, effects = update(reopened, msg.root_resolved(1, "/old"))
@@ -263,7 +272,7 @@ describe("core.update", function()
 
   it("drops results after close", function()
     local closed, effects = update(opened_state(), msg.closed())
-    assert.are.same({ "CloseTab" }, types(effects))
+    assert.are.same({ "StopWatcher", "CloseTab" }, types(effects))
     local state = update(closed, msg.root_resolved(1, "/repo"))
     assert.is_nil(state.root)
   end)

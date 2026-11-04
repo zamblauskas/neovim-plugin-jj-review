@@ -25,7 +25,7 @@ end
 ---@param state review.State
 ---@return review.State, review.Effect[]
 function M.Closed(state)
-  return tbl.with(state, { open = false }), { effect.close_tab() }
+  return tbl.with(state, { open = false }), { effect.stop_watcher(), effect.close_tab() }
 end
 
 return M

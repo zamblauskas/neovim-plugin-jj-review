@@ -7,6 +7,7 @@ local M = {}
 ---| review.Msg.Opened
 ---| review.Msg.Closed
 ---| review.Msg.Cleared
+---| review.Msg.RefreshRequested
 ---| review.Msg.RootResolved
 ---| review.Msg.OpChecked
 ---| review.Msg.StackLoaded
@@ -32,6 +33,11 @@ local M = {}
 --- Delete all marks in the repo (confirmed by the user).
 ---@class review.Msg.Cleared
 ---@field type "Cleared"
+
+--- Something outside may have changed (jj operation, focus): check the operation and the store.
+---@class review.Msg.RefreshRequested
+---@field type "RefreshRequested"
+---@field generation integer
 
 ---@class review.Msg.RootResolved
 ---@field type "RootResolved"
@@ -118,6 +124,11 @@ end
 ---@return review.Msg.Cleared
 function M.cleared()
   return { type = "Cleared" }
+end
+
+---@return review.Msg.RefreshRequested
+function M.refresh_requested(generation)
+  return { type = "RefreshRequested", generation = generation }
 end
 
 ---@return review.Msg.RootResolved

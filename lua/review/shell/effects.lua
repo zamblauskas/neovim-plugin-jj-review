@@ -15,6 +15,7 @@ local M = {}
 ---@field layout table       -- review.shell.layout
 ---@field diff table         -- review.shell.diff
 ---@field store table        -- review.shell.store
+---@field watcher table      -- review.shell.watcher
 
 ---@param err string
 local function notify_error(err)
@@ -137,6 +138,18 @@ local function dispatch_later(app, message)
   end)
 end
 
+--- Handler for a store write. A failure becomes StoreFailed.
+---@param write fun(e: table): boolean, string?
+---@return fun(effect: review.Effect, app: review.App)
+local function store_write(write)
+  return function(e, app)
+    local ok, err = write(e)
+    if not ok then
+      dispatch_later(app, msg.store_failed(e.generation, "marks.json: " .. tostring(err)))
+    end
+  end
+end
+
 ---@param ports review.Ports
 ---@return table<string, fun(effect: review.Effect, app: review.App)>
 local function store_handlers(ports)
@@ -145,17 +158,29 @@ local function store_handlers(ports)
       local marks, err = ports.store.load_marks(e.root)
       dispatch_later(app, marks and msg.store_loaded(e.generation, marks) or msg.store_failed(e.generation, err))
     end,
-    SaveMarks = function(e, app)
-      local ok, err = ports.store.save_marks(e.root, e.patch)
+    SaveMarks = store_write(function(e)
+      return ports.store.save_marks(e.root, e.patch)
+    end),
+    ClearMarks = store_write(function(e)
+      return ports.store.clear_marks(e.root)
+    end),
+  }
+end
+
+---@param ports review.Ports
+---@return table<string, fun(effect: review.Effect, app: review.App)>
+local function watcher_handlers(ports)
+  return {
+    StartWatcher = function(e, app)
+      local ok, err = ports.watcher.start(e.root, function()
+        app.dispatch(msg.refresh_requested(e.generation))
+      end)
       if not ok then
-        dispatch_later(app, msg.store_failed(e.generation, "marks.json: " .. tostring(err)))
+        vim.notify("review: no auto-refresh on jj changes, only on focus: " .. tostring(err), vim.log.levels.WARN)
       end
     end,
-    ClearMarks = function(e, app)
-      local ok, err = ports.store.clear_marks(e.root)
-      if not ok then
-        dispatch_later(app, msg.store_failed(e.generation, "marks.json: " .. tostring(err)))
-      end
+    StopWatcher = function()
+      ports.watcher.stop()
     end,
     Notify = function(e)
       vim.notify("review: " .. e.text, NOTIFY_LEVELS[e.level])
@@ -202,6 +227,7 @@ function M.new(ports, opts)
     repo_handlers(ports),
     revision_handlers(ports, opts or { max_parallel_jj = 4 }),
     store_handlers(ports),
+    watcher_handlers(ports),
     ui_handlers(ports)
   )
   return function(effect, app)
