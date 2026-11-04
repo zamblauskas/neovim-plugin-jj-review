@@ -43,7 +43,8 @@
   open. A fold you set stays until the review closes.
 - Counts are right-aligned to the explorer width. A long name is cut with `…`. The stack count shows when all
   diffs are loaded.
-- Orphaned comments section at the bottom. Hidden if empty.
+- `💬` and `⚠` come after the count.
+- Orphaned comments section at the bottom: `⚠ path:line "first line of the text"`. Hidden if empty.
 
 ### Error state
 
@@ -81,7 +82,7 @@ Visual states:
 | Removed block, not reviewed | Red virtual lines above the next real line |
 | Removed block, reviewed | Red virtual lines dimmed, `✓` in the gutter of the first line |
 | Removed block, partly reviewed | `3/4` in the gutter of the first line |
-| Comment | Virtual lines below the anchor line, `💬` prefix |
+| Comment | Virtual lines below the last line of the anchor, `💬` prefix, from the left edge with the gutter |
 | Outdated comment | Virtual lines at the original line number, `⚠ outdated` prefix, other color |
 
 Dim can be turned off in config (`dim_reviewed = false`). Dim colors are a 50% blend of `DiffAdd` / `DiffDelete`
@@ -96,8 +97,9 @@ Placement rules:
 
 ### Comment input
 
-Float window with a multi-line buffer. Title shows the anchor (`controller.ts:12-14`).
-Keys: `<C-s>` saves. `q` or `<Esc>` in normal mode cancels.
+Float window with a multi-line buffer (markdown). Title shows the anchor (`controller.ts:12-14`,
+`controller.ts:7 (removed)`). Opens in insert mode. Keys: `<C-s>` saves (normal and insert mode). `q` or `<Esc>` in
+normal mode cancels. Empty text: no comment.
 
 ## Keymaps
 
@@ -121,7 +123,7 @@ Buffer-local. Only in review buffers.
 | `<leader>rf` | Toggle reviewed: file |
 | `<leader>rc` | Add comment: line, or visual range. Unchanged lines are allowed. |
 | `<leader>rC` | Add comment: removed block above the cursor |
-| `<leader>rx` | Delete comment under the cursor |
+| `<leader>rx` | Delete the comment shown at the cursor line (the first one if there are more) |
 | `]r` / `[r` | Next / previous unreviewed line or block, in this file only. No wrap. A block: its attach line. |
 | `]R` / `[R` | Next / previous file in the revision |
 
@@ -135,6 +137,7 @@ The cursor does not move after a mark. Use `]r` to go to the next unreviewed lin
 | `<CR>` | On a revision: fold / unfold. On a file: open it. |
 | `<leader>re` | Make the revision under the cursor the working copy (`jj edit`) |
 | `<leader>rf` | Toggle reviewed: file under the cursor |
+| `<leader>rx` | Delete the orphaned comment under the cursor |
 | `q` | Close review |
 | `?` | Help |
 

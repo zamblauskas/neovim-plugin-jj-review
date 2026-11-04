@@ -59,7 +59,8 @@ lua/review/
     navigation.lua      next / previous unreviewed change
     open_file.lua       show the open file; follow it after a stack or diff change
     explorer_cursor.lua explorer cursor row after a redraw
-    comments.lua        lookup: found / outdated / orphaned
+    comments.lua        comment types, patch, anchor lines, placement: found / outdated / orphaned
+    comment_drafts.lua  comment target → anchor, keys, snippet, title
     folds.lua           explorer fold state: user choice, default rule
     file_tree.lua       files → tree entries in display order (explorer, ]R)
     explorer_actions.lua  (action, row target) → message
@@ -84,6 +85,7 @@ lua/review/
     jj.lua              JJ port adapter: build args, run with vim.system
     store.lua           marks.json: load, read-merge-write with a patch, atomic rename
     clock.lua           clock port: now()
+    ids.lua             id port: comment ids
     effects.lua         effect interpreter, render batching
     apply.lua           apply view specs to buffers (namespaces)
     layout.lua          review tab port (Facade): tab page, diff window
@@ -121,7 +123,8 @@ See `core/state.lua` (`review.State`). Main fields: `config`, `open`, `generatio
 
 ## Messages
 
-v0.4 adds `RefreshRequested` (watcher or focus → `CheckOp` and `LoadStore`). v0.3 has the lifecycle and JJ messages, `StoreLoaded{marks}`, `StoreFailed{error}`, `ToggleRequested{target, now}`,
+v0.5 adds `CommentRequested{target}`, `CommentSubmitted{draft, text, id, now}`, `CommentDeleteRequested{change_id,
+path, line}`, `CommentDeleted{id}`; `StoreLoaded` carries comments. v0.4 adds `RefreshRequested` (watcher or focus → `CheckOp` and `LoadStore`). v0.3 has the lifecycle and JJ messages, `StoreLoaded{marks}`, `StoreFailed{error}`, `ToggleRequested{target, now}`,
 `FoldToggled`, `FileOpened`, `FileStepped`, `UnreviewedStepped{change_id, path, line, offset}`. The rest is the plan.
 A failed `jj diff` or `jj file show` is a `JjFailed` (stack error state). Messages that make marks carry `now`
 (core has no clock).
@@ -136,7 +139,7 @@ A failed `jj diff` or `jj file show` is a `JjFailed` (stack error state). Messag
 
 ## Effects
 
-v0.3 has `ResolveRoot`, `CheckOp`, `LoadStack`, `LoadDiff`, `LoadContent`, `LoadStore`, `SaveMarks`, `ClearMarks`,
+v0.3 has `ResolveRoot`, `CheckOp`, `LoadStack`, `LoadDiff`, `LoadContent`, `LoadStore`, `SaveMarks`, `ClearMarks` (v0.5: `ClearStore`),
 `OpenTab`, `CloseTab`, `OpenBuffer`, `MoveCursor`, `RenderExplorer`, `RenderDiff`, `Notify`. The rest is the plan. Effects for JJ carry `generation` and `root`.
 
 | Effect | Result message |
@@ -148,7 +151,8 @@ v0.3 has `ResolveRoot`, `CheckOp`, `LoadStack`, `LoadDiff`, `LoadContent`, `Load
 | `LoadContent{commit_id, path}` | `ContentLoaded` or `JjFailed` |
 | `JjEdit{change_id}` | (watcher sees new operation → `OpChecked`) |
 | `LoadStore{root}` | `StoreLoaded` or `StoreFailed` |
-| `SaveMarks{root, patch}` / `ClearMarks{root}` / `SaveComments` | none, or `StoreFailed` |
+| `SaveMarks{root, patch}` / `SaveComments{root, patch}` / `ClearStore{root}` | none, or `StoreFailed` |
+| `OpenCommentInput{title, draft}` | `CommentSubmitted` (on save) |
 | `MoveCursor{line}` | none |
 | `StartWatcher{root}` / `StopWatcher` | `RefreshRequested` on each jj operation or focus |
 | `CloseDiff` | none |

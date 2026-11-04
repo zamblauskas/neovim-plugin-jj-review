@@ -105,7 +105,11 @@ File: `.jj/review/comments.json`. One file for the repo. The agent reads it.
 ```
 
 - `anchor.type`: `line`, `range`, `block` in v0. `revision` in v1 (F-20).
-- A comment can be on unchanged lines in the diff. An unchanged line gets a `+` key, calculated the same way (new text). The key is only a comment anchor. It has no mark and does not count.
+- `keys`: the anchors of the lines (line, range) or of the removed lines (block).
+- A comment can be on unchanged lines in the diff. An unchanged line in a hunk gets an `=` key
+  (`= | path | hash | occurrence`), calculated the same way from the new text, with its own occurrence count.
+  It is only a comment anchor: no mark, no count, never equal to a review key.
+- A comment on lines outside the hunks has no keys. It shows at `start_line` while its revision has the file.
 - `start_line` / `end_line`: line numbers when the comment was made. Used for the outdated fallback.
 - `snippet` and line numbers help the agent find the code.
 - Only the user deletes comments (`<leader>rx`).
@@ -114,9 +118,12 @@ File: `.jj/review/comments.json`. One file for the repo. The agent reads it.
 
 For each comment, in the open revision and file:
 
-1. One key or more found in the current diff → show at the first found line. Normal style.
+1. One key or more found in a diff of the stack (any revision, so a comment follows a squash) → show at the
+   last found line (the end of the anchor). Normal style.
 2. No key found, `change_id` is in the stack, and `path` is in its diff → show at `start_line` (clamped to file length). Outdated style (F-11).
 3. Else → orphaned. Listed in the explorer (F-12).
+
+Lines are clamped to the new text. No comment is placed while a diff of the stack is loading.
 
 ## Concurrency
 

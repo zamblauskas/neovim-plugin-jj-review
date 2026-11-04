@@ -111,6 +111,11 @@ Write feedback for the agent.
 
 Features: F-10, F-11, F-12.
 
+Steps (one revision each): comment anchors and placement; comments.json; write and delete comments; diff view
+comments; explorer icons and orphaned comments.
+
+Status: done.
+
 ## v0.6 — Working copy
 
 Use LSP and edit code during the review.
