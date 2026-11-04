@@ -2,6 +2,7 @@
 
 local actions = require("review.core.explorer_actions")
 local apply = require("review.shell.apply")
+local clock = require("review.shell.clock")
 local msg = require("review.core.msg")
 local view = require("review.view.explorer")
 
@@ -45,7 +46,20 @@ local function set_window_options(win)
   wo.foldcolumn, wo.spell, wo.list = "0", false, false
 end
 
---- `q` closes the review. `<CR>` runs the enter action of the row.
+---@param buf integer
+---@param app review.App
+local function set_toggle_keymap(buf, app)
+  local key = app.state().config.keymaps.toggle_file
+  if key then
+    vim.keymap.set("n", key, function()
+      on_cursor_row(app, function(target)
+        return actions.toggle_file(target, clock.now())
+      end)
+    end, { buffer = buf, desc = "Toggle reviewed: file" })
+  end
+end
+
+--- `q` closes the review. `<CR>` runs the enter action of the row. The toggle key toggles a file row.
 ---@param buf integer
 ---@param app review.App
 local function set_keymaps(buf, app)
@@ -55,6 +69,7 @@ local function set_keymaps(buf, app)
   vim.keymap.set("n", "<CR>", function()
     on_cursor_row(app, actions.enter)
   end, { buffer = buf, desc = "Fold revision / open file" })
+  set_toggle_keymap(buf, app)
 end
 
 --- Keymaps. Closing the window (`:q`) closes the review too.

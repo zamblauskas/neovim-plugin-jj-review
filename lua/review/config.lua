@@ -11,6 +11,9 @@ local M = {}
 ---@class review.KeymapConfig
 ---@field open string|false
 ---@field close string|false
+---@field toggle string|false        -- diff buffer: line or visual range
+---@field toggle_block string|false  -- diff buffer: removed block at the cursor line
+---@field toggle_file string|false   -- diff buffer and explorer: file
 ---@field next_file string|false  -- diff buffer: next file in the revision
 ---@field prev_file string|false  -- diff buffer: previous file in the revision
 
@@ -22,6 +25,9 @@ M.defaults = {
   keymaps = {
     open = "<leader>jvv",
     close = "<leader>jvq",
+    toggle = "<leader>rr",
+    toggle_block = "<leader>rR",
+    toggle_file = "<leader>rf",
     next_file = "]R",
     prev_file = "[R",
   },

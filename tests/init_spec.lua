@@ -16,6 +16,24 @@ local function wait_for_line(expected)
   end, 20)
 end
 
+--- Repo with one revision that adds a.txt ("hello"). Opens the review and opens a.txt with <CR>.
+---@return string repo
+local function open_one_file_review()
+  local repo = helpers.temp_repo()
+  vim.fn.writefile({ "hello" }, repo .. "/a.txt")
+  helpers.jj(repo, { "describe", "-m", "first change" })
+  helpers.jj(repo, { "new" })
+  vim.cmd.cd(repo)
+  vim.cmd("Review")
+  wait_for_line("    A a.txt")
+  vim.api.nvim_win_set_cursor(0, { vim.fn.index(explorer_lines(), "    A a.txt") + 1, 0 })
+  vim.api.nvim_feedkeys(vim.keycode("<CR>"), "x", false)
+  vim.wait(5000, function()
+    return vim.api.nvim_buf_get_name(0):match("a%.txt$") ~= nil
+  end, 20)
+  return repo
+end
+
 describe("review (end to end)", function()
   local cwd
 
@@ -51,20 +69,16 @@ describe("review (end to end)", function()
   end)
 
   it("opens a file of the oldest revision with <CR>", function()
-    local repo = helpers.temp_repo()
-    vim.fn.writefile({ "hello" }, repo .. "/a.txt")
-    helpers.jj(repo, { "describe", "-m", "first change" })
-    helpers.jj(repo, { "new" })
-    vim.cmd.cd(repo)
-    vim.cmd("Review")
-    wait_for_line("    A a.txt")
-    vim.api.nvim_win_set_cursor(0, { vim.fn.index(explorer_lines(), "    A a.txt") + 1, 0 })
-    vim.api.nvim_feedkeys(vim.keycode("<CR>"), "x", false)
-    vim.wait(5000, function()
-      return vim.api.nvim_buf_get_name(0):match("a%.txt$") ~= nil
-    end, 20)
+    open_one_file_review()
     assert.truthy(vim.api.nvim_buf_get_name(0):match("^review://%w+/a%.txt$"))
     assert.are.same({ "hello" }, vim.api.nvim_buf_get_lines(0, 0, -1, false))
+  end)
+
+  it("marks a line as reviewed and writes marks.json", function()
+    local repo = open_one_file_review()
+    vim.api.nvim_feedkeys(vim.keycode("<leader>rr"), "x", false)
+    local marks = require("review.shell.store").load_marks(repo)
+    assert.are.same(1, vim.tbl_count(assert(marks)))
   end)
 
   it("closes with :Review close", function()

@@ -10,10 +10,6 @@ local tbl = require("review.lib.tbl")
 
 local M = {}
 
---- A deleted file has no new text: the buffer has one empty line.
-local DELETED_LINES = { "" }
-local BINARY_LINES = { "Binary file" }
-
 ---@param state review.State
 ---@return review.Revision[]
 local function revisions(state)
@@ -28,29 +24,18 @@ function M.FoldToggled(state, msg)
   return tbl.with(state, { folds = next_folds }), { effect.render_explorer() }
 end
 
---- New text lines when they are known without jj, or in the cache (memoization by commit id).
----@param state review.State
----@param rev review.Revision
----@param file review.FileDiff
----@return string[]?
-local function known_lines(state, rev, file)
-  if file.status == "deleted" then
-    return DELETED_LINES
-  elseif file.binary then
-    return BINARY_LINES
-  end
-  return (state.contents[rev.commit_id] or {})[file.path]
-end
-
 --- Effects that show the file: open the buffer, or load the content first.
 ---@param state review.State
 ---@param rev review.Revision
 ---@param file review.FileDiff
 ---@return review.Effect[]
 local function show(state, rev, file)
-  local lines = known_lines(state, rev, file)
+  local lines = lookup.new_lines(state, rev, file)
   if lines then
-    return { effect.open_buffer(rev.change_id, file.path, lines, changes.first_line(file)), effect.render_diff() }
+    return {
+      effect.open_buffer(rev.change_id, file.path, lines, changes.first_line(file, #lines)),
+      effect.render_diff(),
+    }
   end
   return { effect.load_content(state.generation, assert(state.root, "root not resolved"), rev.commit_id, file.path) }
 end

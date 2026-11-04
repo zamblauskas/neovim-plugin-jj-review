@@ -25,4 +25,15 @@ function M.enter(target)
   return msg.file_opened(target.change_id, target.path)
 end
 
+--- Toggle reviewed: the file under the cursor. Other rows: no action.
+---@param target review.ExplorerTarget
+---@param now string
+---@return review.Msg?
+function M.toggle_file(target, now)
+  if target.type ~= "file" then
+    return nil
+  end
+  return msg.toggle_requested({ type = "file", change_id = target.change_id, path = target.path }, now)
+end
+
 return M

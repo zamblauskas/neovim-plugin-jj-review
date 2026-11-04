@@ -2,9 +2,9 @@
 -- The only owner of these buffers. A buffer is reused when the same file opens again.
 
 local apply = require("review.shell.apply")
+local diff_keymaps = require("review.shell.diff_keymaps")
 local layout = require("review.shell.layout")
 local lookup = require("review.core.lookup")
-local msg = require("review.core.msg")
 local view = require("review.view.diff")
 
 local M = {}
@@ -19,21 +19,6 @@ local buffers = {}
 ---@return string
 local function buffer_name(change_id, path)
   return "review://" .. change_id .. "/" .. path
-end
-
---- Buffer-local keymaps. A key set to false in the config is not mapped.
----@param buf integer
----@param app review.App
-local function set_keymaps(buf, app)
-  local keymaps = app.state().config.keymaps
-  local steps = { { keymaps.next_file, 1, "Next file" }, { keymaps.prev_file, -1, "Previous file" } }
-  for _, step in ipairs(steps) do
-    if step[1] then
-      vim.keymap.set("n", step[1], function()
-        app.dispatch(msg.file_stepped(step[2]))
-      end, { buffer = buf, desc = step[3] })
-    end
-  end
 end
 
 ---@param name string
@@ -58,7 +43,7 @@ local function buffer_for(e, app)
   local buf = buffers[name]
   if not (buf and vim.api.nvim_buf_is_valid(buf)) then
     buf = create_buffer(name, e.path)
-    set_keymaps(buf, app)
+    diff_keymaps.set(buf, { change_id = e.change_id, path = e.path }, app)
     buffers[name] = buf
   end
   return buf

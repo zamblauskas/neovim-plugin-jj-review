@@ -27,19 +27,9 @@ end
 local INPUT = { line_count = 8, tabstop = 4 }
 
 describe("view.diff", function()
-  it("highlights added lines and puts removed blocks above the next line", function()
+  it("highlights added lines and draws removed blocks with their placement", function()
     local f = file("@@ -1,7 +1,8 @@\n a\n-b\n+B\n c\n d\n e\n f\n-g\n+G\n+h\n")
     assert.are.same({ "-1^ b", "+1", "-6^ g", "+6", "+7" }, outline(view.render(f, INPUT)))
-  end)
-
-  it("groups consecutive removed lines into one block", function()
-    local f = file("@@ -1,3 +1,1 @@\n a\n-b\n-c\n")
-    assert.are.same({ "-0_ b,c" }, outline(view.render(f, { line_count = 1, tabstop = 4 })))
-  end)
-
-  it("puts a block at the end of the file below the last line", function()
-    local f = file("@@ -1,3 +1,2 @@\n a\n b\n-c\n")
-    assert.are.same({ "-1_ c" }, outline(view.render(f, { line_count = 2, tabstop = 4 })))
   end)
 
   it("sets topfill for a block above line 1", function()
@@ -48,21 +38,9 @@ describe("view.diff", function()
     assert.are.same(2, rendered.topfill)
   end)
 
-  it("puts the block of a deleted file below its one empty line", function()
+  it("does not count blocks below line 1 in topfill", function()
     local f = file("@@ -1,2 +0,0 @@\n-x\n-y\n", "deleted file mode 100644\n")
-    local rendered = view.render(f, { line_count = 1, tabstop = 4 })
-    assert.are.same({ "-0_ x,y" }, outline(rendered))
-    assert.are.same(0, rendered.topfill)
-  end)
-
-  it("puts the block of an emptied file below its one empty line", function()
-    local f = file("@@ -1,1 +0,0 @@\n-keep\n")
-    assert.are.same({ "-0_ keep" }, outline(view.render(f, { line_count = 1, tabstop = 4 })))
-  end)
-
-  it("counts lines of a hunk that does not start at line 1", function()
-    local f = file("@@ -10,3 +10,3 @@\n a\n-b\n+c\n d\n")
-    assert.are.same({ "-10^ b", "+10" }, outline(view.render(f, { line_count = 20, tabstop = 4 })))
+    assert.are.same(0, view.render(f, { line_count = 1, tabstop = 4 }).topfill)
   end)
 
   it("draws nothing for a binary file", function()

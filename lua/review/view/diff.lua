@@ -1,7 +1,7 @@
 -- Diff view: file diff → extmark specs for the buffer with the new text. Pure.
--- Added lines get a line highlight. Removed blocks are virtual lines:
---   above the next real line; at the end of the file, below the last line;
---   in a deleted or emptied file (one empty line), below that line.
+-- Added lines get a line highlight. Removed blocks are virtual lines, placed by core/changes.lua.
+
+local changes = require("review.core.changes")
 
 local M = {}
 
@@ -19,9 +19,6 @@ local PAD_WIDTH = 400
 ---@class review.DiffViewInput
 ---@field line_count integer
 ---@field tabstop integer
-
----@class review.DiffViewContext: review.DiffViewInput
----@field empty boolean  -- the new text is empty (deleted or emptied file)
 
 ---@param text string
 ---@param tabstop integer
@@ -48,80 +45,20 @@ local function removed_virt_lines(texts, tabstop)
   end, texts)
 end
 
---- Row of a removed block, and whether it is above that row. Rules at the top of this file.
----@param next_line integer  -- 1-based new line after the block
----@param ctx review.DiffViewContext
----@return integer, boolean
-local function block_position(next_line, ctx)
-  if ctx.empty then
-    return 0, false
-  elseif next_line > ctx.line_count then
-    return ctx.line_count - 1, false
-  end
-  return next_line - 1, true
-end
-
----@alias review.DiffSegment
----| { type: "added", line: integer }
----| { type: "removed", texts: string[], next_line: integer }
-
---- First new line of the hunk. A hunk without new lines starts after `new_start`.
----@param hunk review.Hunk
----@return integer
-local function first_new_line(hunk)
-  return hunk.new_count == 0 and hunk.new_start + 1 or hunk.new_start
-end
-
---- Add a removed line to the open block before `line_no`, or start a new block.
----@param out review.DiffSegment[]
----@param text string
----@param line_no integer
-local function add_removed(out, text, line_no)
-  local last = out[#out]
-  if last and last.type == "removed" and last.next_line == line_no then
-    table.insert(last.texts, text)
-  else
-    table.insert(out, { type = "removed", texts = { text }, next_line = line_no })
-  end
-end
-
---- Group hunk lines into added lines and removed blocks, with new line numbers.
----@param hunk review.Hunk
----@return review.DiffSegment[]
-local function segments(hunk)
-  local out, line_no = {}, first_new_line(hunk)
-  for _, line in ipairs(hunk.lines) do
-    if line.kind == "-" then
-      add_removed(out, line.text, line_no)
-    else
-      if line.kind == "+" then
-        table.insert(out, { type = "added", line = line_no })
-      end
-      line_no = line_no + 1
-    end
-  end
-  return out
-end
-
----@param segment review.DiffSegment
----@param ctx review.DiffViewContext
+---@param segment review.Segment
+---@param input review.DiffViewInput
 ---@return review.ExtmarkSpec
-local function segment_mark(segment, ctx)
+local function segment_mark(segment, input)
   if segment.type == "added" then
     return { row = segment.line - 1, opts = { line_hl_group = "ReviewAdded" } }
   end
-  local row, above = block_position(segment.next_line, ctx)
-  return { row = row, opts = { virt_lines = removed_virt_lines(segment.texts, ctx.tabstop), virt_lines_above = above } }
-end
-
---- The new text is empty: the file is deleted, or a hunk ends the new text at line 0.
----@param file review.FileDiff
----@return boolean
-local function new_text_empty(file)
-  return file.status == "deleted"
-    or vim.iter(file.hunks):any(function(hunk)
-      return hunk.new_start == 0 and hunk.new_count == 0
-    end)
+  local texts = vim.tbl_map(function(line)
+    return line.text
+  end, segment.lines)
+  return {
+    row = segment.line - 1,
+    opts = { virt_lines = removed_virt_lines(texts, input.tabstop), virt_lines_above = segment.above },
+  }
 end
 
 ---@param marks review.ExtmarkSpec[]
@@ -140,16 +77,9 @@ end
 ---@param input review.DiffViewInput
 ---@return review.DiffView
 function M.render(file, input)
-  if file.binary then
-    return { extmarks = {}, topfill = 0 }
-  end
-  local ctx = vim.tbl_extend("force", input, { empty = new_text_empty(file) })
-  local marks = {}
-  for _, hunk in ipairs(file.hunks) do
-    for _, segment in ipairs(segments(hunk)) do
-      table.insert(marks, segment_mark(segment, ctx))
-    end
-  end
+  local marks = vim.tbl_map(function(segment)
+    return segment_mark(segment, input)
+  end, changes.segments(file, input.line_count))
   return { extmarks = marks, topfill = topfill(marks) }
 end
 

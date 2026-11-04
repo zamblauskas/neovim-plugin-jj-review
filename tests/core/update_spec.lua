@@ -1,6 +1,7 @@
 local assert = require("luassert")
 local config = require("review.config")
 local effect = require("review.core.effect")
+local keys = require("review.core.keys")
 local list = require("review.lib.list")
 local msg = require("review.core.msg")
 local state_mod = require("review.core.state")
@@ -178,6 +179,31 @@ describe("core.update", function()
 
     it("does not step without an open file", function()
       local _, effects = update(loaded_state(), msg.file_stepped(1))
+      assert.are.same({}, effects)
+    end)
+
+    it("toggles the file and saves the patch", function()
+      local state =
+        update(loaded_state(), msg.toggle_requested({ type = "file", change_id = "b", path = "a.txt" }, "T"))
+      local key = keys.annotate(added).hunks[1].lines[1].key
+      assert.are.same({ [key] = { created = "T" } }, state.marks)
+      local _, effects =
+        update(loaded_state(), msg.toggle_requested({ type = "file", change_id = "b", path = "a.txt" }, "T"))
+      assert.are.same({ "SaveMarks", "RenderDiff", "RenderExplorer" }, types(effects))
+      assert.are.same({ set = { [key] = { created = "T" } }, unset = {} }, effects[1].patch)
+    end)
+
+    it("unmarks on a second toggle", function()
+      local toggle_msg = msg.toggle_requested({ type = "line", change_id = "b", path = "a.txt", line = 1 }, "T")
+      local state = update(update(loaded_state(), msg.content_loaded(1, "b", "a.txt", { "x" })), toggle_msg)
+      assert.are.same({}, update(state, toggle_msg).marks)
+    end)
+
+    it("does nothing when the target has no keys", function()
+      local toggle_msg = msg.toggle_requested({ type = "line", change_id = "b", path = "a.txt", line = 9 }, "T")
+      local state = loaded_state()
+      local next_state, effects = update(state, toggle_msg)
+      assert.are.equal(state, next_state)
       assert.are.same({}, effects)
     end)
 

@@ -17,6 +17,7 @@ local M = {}
 ---| review.Msg.FileStepped
 ---| review.Msg.StoreLoaded
 ---| review.Msg.StoreFailed
+---| review.Msg.ToggleRequested
 
 ---@class review.Msg.Opened
 ---@field type "Opened"
@@ -75,6 +76,11 @@ local M = {}
 ---@field type "StoreFailed"
 ---@field generation integer
 ---@field error string
+
+---@class review.Msg.ToggleRequested
+---@field type "ToggleRequested"
+---@field target review.ToggleTarget
+---@field now string  -- ISO 8601 UTC, for new marks
 
 ---@class review.Msg.ContentLoaded
 ---@field type "ContentLoaded"
@@ -152,6 +158,13 @@ end
 ---@return review.Msg.StoreFailed
 function M.store_failed(generation, error)
   return { type = "StoreFailed", generation = generation, error = error }
+end
+
+---@param target review.ToggleTarget
+---@param now string
+---@return review.Msg.ToggleRequested
+function M.toggle_requested(target, now)
+  return { type = "ToggleRequested", target = target, now = now }
 end
 
 return M

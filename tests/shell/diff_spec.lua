@@ -91,6 +91,25 @@ describe("shell.diff", function()
     assert.are.same({ msg.file_stepped(1), msg.file_stepped(-1) }, app.messages)
   end)
 
+  it("dispatches toggles for the line, the block, the file and a visual range", function()
+    diff.open(effect.open_buffer("abc", "a.txt", { "1", "2", "3" }, 2), app)
+    vim.api.nvim_feedkeys(
+      vim.keycode("<leader>rr<leader>rR<leader>rf") .. "Vj" .. vim.keycode("<leader>rr"),
+      "x",
+      false
+    )
+    local got = vim.tbl_map(function(m)
+      return m.target
+    end, app.messages)
+    assert.are.same({
+      { type = "line", change_id = "abc", path = "a.txt", line = 2 },
+      { type = "block", change_id = "abc", path = "a.txt", line = 2 },
+      { type = "file", change_id = "abc", path = "a.txt" },
+      { type = "range", change_id = "abc", path = "a.txt", first = 2, last = 3 },
+    }, got)
+    assert.are.same("n", vim.api.nvim_get_mode().mode)
+  end)
+
   it("wipes its buffers on close", function()
     diff.open(effect.open_buffer("abc", "a.txt", { "x" }, 1), app)
     local buf = vim.api.nvim_get_current_buf()

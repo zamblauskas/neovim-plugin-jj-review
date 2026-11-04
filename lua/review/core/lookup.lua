@@ -32,4 +32,22 @@ function M.file(state, rev, path)
   return nil
 end
 
+--- A deleted file has no new text: the buffer has one empty line.
+local DELETED_LINES = { "" }
+local BINARY_LINES = { "Binary file" }
+
+--- Lines of the buffer with the new text, when known without jj or in the cache (memoization by commit id).
+---@param state review.State
+---@param rev review.Revision
+---@param file review.FileDiff
+---@return string[]?
+function M.new_lines(state, rev, file)
+  if file.status == "deleted" then
+    return DELETED_LINES
+  elseif file.binary then
+    return BINARY_LINES
+  end
+  return (state.contents[rev.commit_id] or {})[file.path]
+end
+
 return M
