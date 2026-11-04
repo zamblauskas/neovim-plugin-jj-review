@@ -69,4 +69,12 @@ function M.log(root, revset, template)
   return M.run(root, { "log", "-r", revset, "--no-graph", "-T", template })
 end
 
+--- Diff of one revision. Whitespace changes are ignored. 2 context lines are enough for line keys.
+---@param root string
+---@param commit_id string
+---@return review.JjResult
+function M.diff(root, commit_id)
+  return M.run(root, { "diff", "-r", commit_id, "--git", "-w", "--context", "2" })
+end
+
 return M

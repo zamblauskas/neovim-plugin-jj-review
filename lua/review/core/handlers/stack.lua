@@ -25,11 +25,37 @@ function M.OpChecked(state, msg)
     { effect.load_stack(state.generation, assert(state.root, "root not resolved"), state.revset) }
 end
 
+--- One LoadDiff per revision whose diff is not in the cache (memoization by commit id).
+---@param state review.State
+---@param built review.Stack
+---@return review.Effect[]
+local function missing_diffs(state, built)
+  if built.type ~= "ok" then
+    return {}
+  end
+  local missing = vim.tbl_filter(function(rev)
+    return state.diffs[rev.commit_id] == nil
+  end, built.revisions)
+  return vim.tbl_map(function(rev)
+    return effect.load_diff(state.generation, assert(state.root, "root not resolved"), rev.commit_id)
+  end, missing)
+end
+
 ---@param state review.State
 ---@param msg review.Msg.StackLoaded
 ---@return review.State, review.Effect[]
 function M.StackLoaded(state, msg)
-  return tbl.with(state, { stack = stack.build(msg.revisions) }), { effect.render_explorer() }
+  local built = stack.build(msg.revisions)
+  local effects = vim.list_extend({ effect.render_explorer() }, missing_diffs(state, built))
+  return tbl.with(state, { stack = built }), effects
+end
+
+---@param state review.State
+---@param msg review.Msg.DiffLoaded
+---@return review.State, review.Effect[]
+function M.DiffLoaded(state, msg)
+  local diffs = tbl.with(state.diffs, { [msg.commit_id] = msg.files })
+  return tbl.with(state, { diffs = diffs }), { effect.render_explorer() }
 end
 
 ---@param state review.State

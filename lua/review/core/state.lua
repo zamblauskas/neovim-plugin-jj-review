@@ -11,7 +11,7 @@ local M = {}
 ---@field revset string
 ---@field op_id string?
 ---@field stack review.Stack
----@field diffs table<string, table>   -- by commit id (v0.2)
+---@field diffs table<string, review.FileDiff[]>  -- by commit id
 ---@field marks table<string, table>   -- by line key (v0.3)
 ---@field comments table[]             -- (v0.5)
 

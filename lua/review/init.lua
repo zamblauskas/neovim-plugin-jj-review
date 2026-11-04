@@ -17,7 +17,11 @@ local app
 ---@return review.App
 local function create_app(config)
   local ports = { jj = require("review.shell.jj"), explorer = require("review.shell.explorer") }
-  return app_mod.create(state_mod.initial(config), update.update, effects.new(ports))
+  return app_mod.create(
+    state_mod.initial(config),
+    update.update,
+    effects.new(ports, { max_parallel_jj = config.max_parallel_jj })
+  )
 end
 
 ---@param args vim.api.keyset.create_user_command.command_args

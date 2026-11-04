@@ -9,6 +9,7 @@ local M = {}
 ---| review.Msg.RootResolved
 ---| review.Msg.OpChecked
 ---| review.Msg.StackLoaded
+---| review.Msg.DiffLoaded
 ---| review.Msg.JjFailed
 
 ---@class review.Msg.Opened
@@ -33,6 +34,12 @@ local M = {}
 ---@field type "StackLoaded"
 ---@field generation integer
 ---@field revisions review.Revision[]
+
+---@class review.Msg.DiffLoaded
+---@field type "DiffLoaded"
+---@field generation integer
+---@field commit_id string
+---@field files review.FileDiff[]
 
 ---@class review.Msg.JjFailed
 ---@field type "JjFailed"
@@ -64,6 +71,11 @@ end
 ---@return review.Msg.StackLoaded
 function M.stack_loaded(generation, revisions)
   return { type = "StackLoaded", generation = generation, revisions = revisions }
+end
+
+---@return review.Msg.DiffLoaded
+function M.diff_loaded(generation, commit_id, files)
+  return { type = "DiffLoaded", generation = generation, commit_id = commit_id, files = files }
 end
 
 ---@return review.Msg.JjFailed

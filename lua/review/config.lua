@@ -5,6 +5,7 @@ local M = {}
 ---@class review.Config
 ---@field revset string
 ---@field explorer_width integer
+---@field max_parallel_jj integer
 ---@field keymaps review.KeymapConfig
 
 ---@class review.KeymapConfig
@@ -15,6 +16,7 @@ local M = {}
 M.defaults = {
   revset = "(trunk()..@)::",
   explorer_width = 40,
+  max_parallel_jj = 4,
   keymaps = {
     open = "<leader>jvv",
     close = "<leader>jvq",
@@ -25,6 +27,7 @@ M.defaults = {
 local function validate(config)
   vim.validate("revset", config.revset, "string")
   vim.validate("explorer_width", config.explorer_width, "number")
+  vim.validate("max_parallel_jj", config.max_parallel_jj, "number")
   vim.validate("keymaps", config.keymaps, "table")
   for name, key in pairs(config.keymaps) do
     vim.validate("keymaps." .. name, key, { "string", "boolean" })

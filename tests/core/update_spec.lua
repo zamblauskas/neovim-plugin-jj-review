@@ -65,10 +65,36 @@ describe("core.update", function()
     assert.are.same({}, effects)
   end)
 
-  it("builds the stack and renders", function()
-    local state, effects = update(opened_state(), msg.stack_loaded(1, { rev("b", { "a" }), rev("a", {}) }))
-    assert.are.same("ok", state.stack.type)
-    assert.are.same(2, #state.stack.revisions)
+  it("builds the stack, renders, and loads the diff of each revision", function()
+    local state = update(opened_state(), msg.root_resolved(1, "/repo"))
+    local next_state, effects = update(state, msg.stack_loaded(1, { rev("b", { "a" }), rev("a", {}) }))
+    assert.are.same("ok", next_state.stack.type)
+    assert.are.same(2, #next_state.stack.revisions)
+    assert.are.same({
+      { type = "RenderExplorer" },
+      { type = "LoadDiff", generation = 1, root = "/repo", commit_id = "b" },
+      { type = "LoadDiff", generation = 1, root = "/repo", commit_id = "a" },
+    }, effects)
+  end)
+
+  it("does not load a diff that is in the cache", function()
+    local state = update(opened_state(), msg.root_resolved(1, "/repo"))
+    state = update(state, msg.diff_loaded(1, "a", {}))
+    local _, effects = update(state, msg.stack_loaded(1, { rev("b", { "a" }), rev("a", {}) }))
+    assert.are.same({ "RenderExplorer", "LoadDiff" }, types(effects))
+    assert.are.same("b", effects[2].commit_id)
+  end)
+
+  it("does not load diffs for a stack error", function()
+    local state = update(opened_state(), msg.root_resolved(1, "/repo"))
+    local _, effects = update(state, msg.stack_loaded(1, { rev("b", { "x" }), rev("c", { "x" }), rev("x", {}) }))
+    assert.are.same({ "RenderExplorer" }, types(effects))
+  end)
+
+  it("stores a loaded diff by commit id and renders", function()
+    local files = { { status = "added", path = "f", binary = false, hunks = {} } }
+    local state, effects = update(opened_state(), msg.diff_loaded(1, "a", files))
+    assert.are.same(files, state.diffs.a)
     assert.are.same({ "RenderExplorer" }, types(effects))
   end)
 

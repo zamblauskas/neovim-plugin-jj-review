@@ -1,6 +1,7 @@
 local assert = require("luassert")
 local app_mod = require("review.app")
 local config = require("review.config")
+local effect = require("review.core.effect")
 local effects = require("review.shell.effects")
 local msg = require("review.core.msg")
 local state_mod = require("review.core.state")
@@ -31,6 +32,9 @@ local function fake_ports()
       log = function()
         return ok(log_line("b", "a") .. log_line("a", ""))
       end,
+      diff = function(_, commit_id)
+        return ok("diff --git a/" .. commit_id .. ".txt b/" .. commit_id .. ".txt\nnew file mode 100644\n")
+      end,
     },
     explorer = {
       open = function() end,
@@ -57,6 +61,23 @@ describe("shell.effects", function()
     })
   end)
 
+  it("loads the diff of each revision", function()
+    local ports = fake_ports()
+    local app = app_mod.create(state_mod.initial(config.resolve()), update, effects.new(ports))
+    app.dispatch(msg.opened("/repo"))
+    vim.wait(1000, function()
+      return app.state().diffs.a ~= nil and app.state().diffs.b ~= nil
+    end)
+    assert.are.same("a.txt", app.state().diffs.a[1].path)
+    assert.are.same("b.txt", app.state().diffs.b[1].path)
+  end)
+
+  it("turns a failed diff into a jj failure", function()
+    local result =
+      effects.diff_result(effect.load_diff(1, "/repo", "a"), { ok = false, stdout = "", stderr = "x", args = {} })
+    assert.are.same("JjFailed", result.type)
+  end)
+
   it("batches renders in one tick", function()
     local ports = fake_ports()
     local interpret = effects.new(ports)
@@ -75,7 +96,7 @@ describe("shell.effects", function()
   end)
 
   it("turns bad log output into a jj failure", function()
-    local result = effects.stack_result(1, ok("garbage\n"))
+    local result = effects.stack_result(effect.load_stack(1, "/repo", "@"), ok("garbage\n"))
     assert.are.same("JjFailed", result.type)
   end)
 end)

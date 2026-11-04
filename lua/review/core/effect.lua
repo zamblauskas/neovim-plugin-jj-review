@@ -6,6 +6,7 @@ local M = {}
 ---| review.Effect.ResolveRoot
 ---| review.Effect.CheckOp
 ---| review.Effect.LoadStack
+---| review.Effect.LoadDiff
 ---| review.Effect.OpenExplorer
 ---| review.Effect.CloseExplorer
 ---| review.Effect.RenderExplorer
@@ -25,6 +26,12 @@ local M = {}
 ---@field generation integer
 ---@field root string
 ---@field revset string
+
+---@class review.Effect.LoadDiff
+---@field type "LoadDiff"
+---@field generation integer
+---@field root string
+---@field commit_id string
 
 ---@class review.Effect.OpenExplorer
 ---@field type "OpenExplorer"
@@ -48,6 +55,11 @@ end
 ---@return review.Effect.LoadStack
 function M.load_stack(generation, root, revset)
   return { type = "LoadStack", generation = generation, root = root, revset = revset }
+end
+
+---@return review.Effect.LoadDiff
+function M.load_diff(generation, root, commit_id)
+  return { type = "LoadDiff", generation = generation, root = root, commit_id = commit_id }
 end
 
 ---@return review.Effect.OpenExplorer
