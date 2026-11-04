@@ -1,4 +1,5 @@
 local assert = require("luassert")
+local list = require("review.lib.list")
 local stack = require("review.core.stack")
 
 --- Revision with commit id = short id = `id`.
@@ -22,9 +23,7 @@ end
 ---@param result review.StackOk|review.StackError
 ---@return string[]
 local function ids(result)
-  return vim.tbl_map(function(r)
-    return r.short_id
-  end, result.revisions)
+  return list.pluck(result.revisions, "short_id")
 end
 
 describe("core.stack.build", function()

@@ -1,7 +1,7 @@
 -- JJ port. Reads never snapshot the working copy, so they never create an operation.
 -- All functions except `run_cb` must be called inside `async.run`.
 
-local async = require("review.shell.async")
+local async = require("review.shell.lib.async")
 
 local M = {}
 

@@ -1,5 +1,5 @@
 local assert = require("luassert")
-local async = require("review.shell.async")
+local async = require("review.shell.lib.async")
 local helpers = require("tests.helpers")
 
 describe("async", function()

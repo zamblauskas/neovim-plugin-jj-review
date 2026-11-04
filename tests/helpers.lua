@@ -1,6 +1,6 @@
 -- Shared test helpers.
 
-local async = require("review.shell.async")
+local async = require("review.shell.lib.async")
 
 local M = {}
 

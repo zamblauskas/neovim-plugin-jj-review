@@ -37,7 +37,7 @@ Features: F-01, F-02, part of F-03, F-15 (close).
 Steps (one revision each):
 
 1. **Tooling.** `Makefile` (`test`, `lint`, `format`, `typecheck`, `check`), `stylua.toml`, `selene.toml`, `.luarc.check.json`, `tests/minimal_init.lua`, `.gitignore`.
-2. **Async and JJ port.** `shell/async.lua` (coroutine run / await), `shell/jj.lua` (`vim.system`, `--ignore-working-copy`, result `{ ok, stdout, stderr }`). Tests with a temp JJ repo.
+2. **Async and JJ port.** `shell/lib/async.lua` (coroutine run / await), `shell/jj.lua` (`vim.system`, `--ignore-working-copy`, result `{ ok, stdout, stderr }`). Tests with a temp JJ repo.
 3. **Parse log and stack.** `parse/log.lua` (template with `\0` separators), `core/stack.lua` (remove empty, check linear, order newest first). Tests with fixtures.
 4. **Elm runtime.** `config.lua`, `core/state.lua`, `core/msg.lua`, `core/effect.lua`, `core/update.lua` (dispatch table), `app.lua` (state, `dispatch`), `shell/effects.lua` (interpreter, render batching). Handlers: `Opened`, `Closed`, `RootResolved`, `OpChecked`, `StackLoaded`, `JjFailed`. Tests: `update` with plain data.
 5. **Explorer.** `view/explorer.lua` (header, revision rows, `◆`, error state), `shell/apply.lua`, explorer window (left split, `explorer_width`), `q`. Tests: view output.

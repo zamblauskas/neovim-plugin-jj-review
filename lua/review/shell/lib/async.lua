@@ -6,12 +6,7 @@ local M = {}
 ---@type table<thread, fun(...)>
 local resumers = setmetatable({}, { __mode = "k" })
 
----@param err string
-local function report(err)
-  vim.notify("review: " .. err, vim.log.levels.ERROR)
-end
-
---- Run `fn` in a new coroutine. `on_error` gets the traceback if `fn` fails.
+--- Run `fn` in a new coroutine. `on_error` gets the traceback if `fn` fails (default: `error`).
 ---@param fn fun()
 ---@param on_error? fun(err: string)
 function M.run(fn, on_error)
@@ -19,7 +14,7 @@ function M.run(fn, on_error)
   local function step(...)
     local ok, err = coroutine.resume(co, ...)
     if not ok then
-      (on_error or report)(debug.traceback(co, err))
+      (on_error or error)(debug.traceback(co, err))
     end
   end
   resumers[co] = step

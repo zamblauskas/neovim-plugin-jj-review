@@ -1,8 +1,9 @@
 -- Effect interpreter: runs effect descriptions through ports, dispatches result messages.
 
-local async = require("review.shell.async")
+local async = require("review.shell.lib.async")
 local log = require("review.parse.log")
 local msg = require("review.core.msg")
+local schedule = require("review.shell.lib.schedule")
 
 local M = {}
 
@@ -10,21 +11,9 @@ local M = {}
 ---@field jj table           -- review.shell.jj
 ---@field explorer table     -- review.shell.explorer
 
---- Call `render(state)` at most once per event-loop tick.
----@param render fun(state: review.State)
----@return fun(effect: review.Effect, app: review.App)
-local function batched(render)
-  local pending = false
-  return function(_, app)
-    if pending then
-      return
-    end
-    pending = true
-    vim.schedule(function()
-      pending = false
-      render(app.state())
-    end)
-  end
+---@param err string
+local function notify_error(err)
+  vim.notify("review: " .. err, vim.log.levels.ERROR)
 end
 
 --- Handler that runs a JJ query and dispatches the message made from its result.
@@ -35,7 +24,7 @@ local function jj_effect(query, to_msg)
   return function(e, app)
     async.run(function()
       app.dispatch(to_msg(e.generation, query(e)))
-    end)
+    end, notify_error)
   end
 end
 
@@ -92,8 +81,8 @@ local function ui_handlers(ports)
     CloseExplorer = function()
       ports.explorer.close()
     end,
-    RenderExplorer = batched(function(state)
-      ports.explorer.render(state)
+    RenderExplorer = schedule.once_per_tick(function(_, app)
+      ports.explorer.render(app.state())
     end),
   }
 end

@@ -15,7 +15,7 @@ Target: Neovim 0.12. No runtime dependencies. Tests: plenary busted.
 | Dispatch table (Strategy) | `update` and the effect interpreter select a handler by `msg.type` / `effect.type`. |
 | Memoization (cache by immutable id) | File diffs cached by commit id. A commit id never changes content. |
 | Tagged union (sum type) | Messages, effects, comment anchors, stack status. Field `type` is the tag. |
-| Coroutine async/await | `shell/async.lua`. Async code reads as a list of steps. |
+| Coroutine async/await | `shell/lib/async.lua`. Async code reads as a list of steps. |
 | Read-merge-write + atomic rename | `shell/store.lua` writes `marks.json` and `comments.json`. |
 
 ## Layers
@@ -58,6 +58,7 @@ lua/review/
     comments.lua        lookup: found / outdated / orphaned
   lib/
     tbl.lua             pure table helpers: with (immutable update)
+    list.lua            pure list helpers: pluck, index_by
   parse/
     log.lua             jj log template output → revisions
     diff.lua            jj diff --git output → file diffs
@@ -65,7 +66,9 @@ lua/review/
     explorer.lua        state → explorer lines, highlights, row map
     diff.lua            file diff + marks + comments → extmark specs
   shell/
-    async.lua           coroutine wrapper: run, await
+    lib/
+      async.lua         coroutine wrapper: run, await
+      schedule.lua      once_per_tick (coalesce calls into one vim.schedule)
     jj.lua              JJ port adapter: build args, run with vim.system
     store.lua           load, merge, atomic save of JSON
     effects.lua         effect interpreter, render batching
@@ -83,6 +86,13 @@ tests/
 
 LuaCATS classes live next to the code that makes them (no central `types.lua`).
 Specs use `local assert = require("luassert")`: selene's `lua51` already defines `assert`.
+
+**Shared helpers go in a lib folder.** A helper that does not use a plugin type or plugin data (for example table,
+string, list, or scheduling operations) does not stay in the module that uses it first:
+- Pure helper → `lib/<topic>.lua`. Every layer can require it.
+- Helper with side effects (Neovim API, coroutines, timers) → `shell/lib/<topic>.lua`. Only `shell/` can require it.
+
+Lib modules do not require `core/`, `parse/`, `view/`, or other `shell/` modules, and do not know the plugin name.
 
 ## State
 

@@ -1,6 +1,8 @@
 -- Build the review stack from the revset result:
 -- remove empty revisions, check the rest is linear, order newest first.
 
+local list = require("review.lib.list")
+
 local M = {}
 
 ---@alias review.Stack review.StackLoading|review.StackOk|review.StackError
@@ -17,16 +19,6 @@ local M = {}
 ---@field reason "not_linear"|"merge"|"jj_failed"
 ---@field revisions? string[]  -- short ids of the problem revisions
 ---@field detail? string       -- jj stderr
-
----@param revisions review.Revision[]
----@return table<string, review.Revision>
-local function index_by_commit(revisions)
-  local index = {}
-  for _, rev in ipairs(revisions) do
-    index[rev.commit_id] = rev
-  end
-  return index
-end
 
 --- Parents inside the kept set. A hidden (empty) parent is replaced by its own effective parents.
 ---@param rev review.Revision
@@ -71,14 +63,6 @@ local function heads(kept, parents)
   end, kept)
 end
 
----@param revs review.Revision[]
----@return string[]
-local function short_ids(revs)
-  return vim.tbl_map(function(rev)
-    return rev.short_id
-  end, revs)
-end
-
 ---@param head review.Revision
 ---@param parents table<string, string[]>
 ---@param kept_index table<string, review.Revision>
@@ -107,13 +91,13 @@ end
 local function linear_stack(kept, parents)
   local merge_revs = merges(kept, parents)
   if #merge_revs > 0 then
-    return { type = "error", reason = "merge", revisions = short_ids(merge_revs) }
+    return { type = "error", reason = "merge", revisions = list.pluck(merge_revs, "short_id") }
   end
   local head_revs = heads(kept, parents)
   if #head_revs > 1 then
-    return { type = "error", reason = "not_linear", revisions = short_ids(head_revs) }
+    return { type = "error", reason = "not_linear", revisions = list.pluck(head_revs, "short_id") }
   end
-  return { type = "ok", revisions = walk_down(head_revs[1], parents, index_by_commit(kept)) }
+  return { type = "ok", revisions = walk_down(head_revs[1], parents, list.index_by(kept, "commit_id")) }
 end
 
 --- Build the stack from the revset result (any order).
@@ -126,7 +110,7 @@ function M.build(revisions)
   if #kept == 0 then
     return { type = "ok", revisions = {} }
   end
-  return linear_stack(kept, parent_map(kept, index_by_commit(revisions)))
+  return linear_stack(kept, parent_map(kept, list.index_by(revisions, "commit_id")))
 end
 
 ---@param stderr string

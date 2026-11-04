@@ -1,5 +1,6 @@
 local assert = require("luassert")
 local config = require("review.config")
+local list = require("review.lib.list")
 local msg = require("review.core.msg")
 local state_mod = require("review.core.state")
 local update = require("review.core.update").update
@@ -7,9 +8,7 @@ local update = require("review.core.update").update
 ---@param effects review.Effect[]
 ---@return string[]
 local function types(effects)
-  return vim.tbl_map(function(e)
-    return e.type
-  end, effects)
+  return list.pluck(effects, "type")
 end
 
 ---@return review.State
