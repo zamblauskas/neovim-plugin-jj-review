@@ -1,0 +1,10 @@
+local assert = require("luassert")
+local color = require("review.lib.color")
+
+describe("lib.color", function()
+  it("blends two colors per channel", function()
+    assert.are.same(0x804020, color.blend(0xff8040, 0x000000, 0.5))
+    assert.are.same(0xff8040, color.blend(0xff8040, 0x123456, 1))
+    assert.are.same(0x123456, color.blend(0xff8040, 0x123456, 0))
+  end)
+end)

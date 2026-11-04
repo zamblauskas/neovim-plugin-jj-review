@@ -65,6 +65,7 @@ function M.open(e, app)
   set_lines(buf, e.lines)
   local win = layout.diff_window(buf)
   vim.api.nvim_win_set_buf(win, buf)
+  vim.wo[win][0].signcolumn = "yes:1"
   vim.api.nvim_set_current_win(win)
   vim.api.nvim_win_set_cursor(win, { math.min(e.cursor_line, #e.lines), 0 })
 end
@@ -97,6 +98,17 @@ local function open_file(state)
   return valid_buf, rev and lookup.file(state, rev, open.path)
 end
 
+--- Columns before the text in the diff window (signs, numbers, folds). 0 if the window does not show `buf`.
+---@param buf integer
+---@return integer
+local function gutter_width(buf)
+  local win = layout.handles().diff_win
+  if not (win and vim.api.nvim_win_is_valid(win) and vim.api.nvim_win_get_buf(win) == buf) then
+    return 0
+  end
+  return vim.fn.getwininfo(win)[1].textoff
+end
+
 --- Draw the diff of the open file.
 ---@param state review.State
 function M.render(state)
@@ -104,7 +116,13 @@ function M.render(state)
   if not (buf and file) then
     return
   end
-  local input = { line_count = vim.api.nvim_buf_line_count(buf), tabstop = vim.bo[buf].tabstop }
+  local input = {
+    line_count = vim.api.nvim_buf_line_count(buf),
+    tabstop = vim.bo[buf].tabstop,
+    gutter_width = gutter_width(buf),
+    marks = state.marks,
+    dim = state.config.dim_reviewed,
+  }
   local rendered = view.render(file, input)
   apply.extmarks(buf, ns, rendered.extmarks)
   set_topfill(buf, rendered.topfill)

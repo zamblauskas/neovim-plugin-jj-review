@@ -1,4 +1,5 @@
 local assert = require("luassert")
+local keys = require("review.core.keys")
 local parse = require("review.parse.diff")
 local view = require("review.view.diff")
 
@@ -18,13 +19,23 @@ local function outline(rendered)
       return "+" .. mark.row
     end
     local texts = vim.tbl_map(function(virt_line)
-      return vim.trim(virt_line[1][1])
+      return vim.trim(virt_line[2][1])
     end, mark.opts.virt_lines)
     return "-" .. mark.row .. (mark.opts.virt_lines_above and "^ " or "_ ") .. table.concat(texts, ",")
   end, rendered.extmarks)
 end
 
-local INPUT = { line_count = 8, tabstop = 4 }
+---@param fields? table
+---@return review.DiffViewInput
+local function input(fields)
+  return vim.tbl_extend(
+    "force",
+    { line_count = 8, tabstop = 4, gutter_width = 3, marks = {}, dim = true },
+    fields or {}
+  )
+end
+
+local INPUT = input()
 
 describe("view.diff", function()
   it("highlights added lines and draws removed blocks with their placement", function()
@@ -33,14 +44,14 @@ describe("view.diff", function()
   end)
 
   it("sets topfill for a block above line 1", function()
-    local rendered = view.render(file("@@ -1,3 +1,2 @@\n-x\n-y\n a\n b\n"), { line_count = 2, tabstop = 4 })
+    local rendered = view.render(file("@@ -1,3 +1,2 @@\n-x\n-y\n a\n b\n"), input({ line_count = 2 }))
     assert.are.same({ "-0^ x,y" }, outline(rendered))
     assert.are.same(2, rendered.topfill)
   end)
 
   it("does not count blocks below line 1 in topfill", function()
     local f = file("@@ -1,2 +0,0 @@\n-x\n-y\n", "deleted file mode 100644\n")
-    assert.are.same(0, view.render(f, { line_count = 1, tabstop = 4 }).topfill)
+    assert.are.same(0, view.render(f, input({ line_count = 1 })).topfill)
   end)
 
   it("draws nothing for a binary file", function()
@@ -51,9 +62,51 @@ describe("view.diff", function()
   it("expands tabs and pads removed lines with the removed highlight", function()
     local f = file("@@ -1,2 +1,1 @@\n-\tx\n-ab\tc\n a\n")
     local virt_lines = assert(view.render(f, INPUT).extmarks[1].opts.virt_lines)
-    assert.are.same("    x", virt_lines[1][1][1]:match("^(.-)%s*$"))
-    assert.are.same("ab  c", virt_lines[2][1][1]:match("^(.-)%s*$"))
-    assert.are.same("ReviewRemoved", virt_lines[1][1][2])
-    assert.are.same(400, vim.fn.strdisplaywidth(virt_lines[1][1][1]))
+    assert.are.same("   ", virt_lines[1][1][1])
+    assert.are.same("    x", virt_lines[1][2][1]:match("^(.-)%s*$"))
+    assert.are.same("ab  c", virt_lines[2][2][1]:match("^(.-)%s*$"))
+    assert.are.same("ReviewRemoved", virt_lines[1][2][2])
+    assert.are.same(400, vim.fn.strdisplaywidth(virt_lines[1][2][1]))
+  end)
+
+  describe("review state", function()
+    local f = keys.annotate(file("@@ -1,4 +1,2 @@\n-x\n-y\n+a\n b\n"))
+    local x, y, a = f.hunks[1].lines[1].key, f.hunks[1].lines[2].key, f.hunks[1].lines[3].key
+
+    ---@param marks review.Marks
+    ---@param dim? boolean
+    ---@return review.ExtmarkSpec[]
+    local function render(marks, dim)
+      return view.render(f, input({ line_count = 2, marks = marks, dim = dim ~= false })).extmarks
+    end
+
+    it("draws a reviewed added line with a sign and the dim group", function()
+      local added = render({ [a] = { created = "t" } })[2].opts
+      assert.are.same(
+        { "✓", "ReviewSign", "ReviewAddedReviewed" },
+        { added.sign_text, added.sign_hl_group, added.line_hl_group }
+      )
+    end)
+
+    it("keeps the normal group when dim is off", function()
+      assert.are.same("ReviewAdded", render({ [a] = { created = "t" } }, false)[2].opts.line_hl_group)
+    end)
+
+    it("shows the block state in the gutter of its first line", function()
+      local function gutter(marks)
+        local virt_lines = assert(render(marks)[1].opts.virt_lines)
+        return { vim.trim(virt_lines[1][1][1]), vim.trim(virt_lines[2][1][1]), virt_lines[1][2][2] }
+      end
+      assert.are.same({ "", "", "ReviewRemoved" }, gutter({}))
+      assert.are.same({ "1/2", "", "ReviewRemoved" }, gutter({ [x] = { created = "t" } }))
+      assert.are.same(
+        { "✓", "", "ReviewRemovedReviewed" },
+        gutter({ [x] = { created = "t" }, [y] = { created = "t" } })
+      )
+    end)
+
+    it("starts block lines at the left edge", function()
+      assert.is_true(render({})[1].opts.virt_lines_leftcol)
+    end)
   end)
 end)
