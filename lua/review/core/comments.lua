@@ -76,15 +76,23 @@ local function add_new_side_anchors(out, hunk)
   end
 end
 
+--- Buffer line of each anchor of the new side (added and unchanged lines in the hunks).
+---@param file review.FileDiff
+---@return table<string, integer>
+function M.new_side_lines(file)
+  local out = {}
+  for _, hunk in ipairs(file.hunks) do
+    add_new_side_anchors(out, hunk)
+  end
+  return out
+end
+
 --- Buffer line of each anchor key of the file. Removed lines are at the line their block attaches to.
 ---@param file review.FileDiff
 ---@param line_count integer
 ---@return table<string, integer>
 function M.anchor_lines(file, line_count)
-  local out = {}
-  for _, hunk in ipairs(file.hunks) do
-    add_new_side_anchors(out, hunk)
-  end
+  local out = M.new_side_lines(file)
   for _, segment in ipairs(changes.segments(file, line_count)) do
     if segment.type == "removed" then
       for _, key in ipairs(changes.keys(segment)) do
@@ -138,20 +146,26 @@ local function found_line(comment, anchors)
   return #found > 0 and math.max(unpack(found)) or nil
 end
 
+--- Placement in a file, with the line clamped to the new text when it is loaded.
+---@param state review.State
+---@param comment review.Comment
+---@param status "found"|"outdated"
+---@param where { rev: review.Revision, file: review.FileDiff, line: integer }
+---@return review.Placement
+local function placed(state, comment, status, where)
+  local line = math.max(math.min(where.line, line_count(state, where.rev, where.file)), 1)
+  return { comment = comment, status = status, change_id = where.rev.change_id, path = where.file.path, line = line }
+end
+
+---@param state review.State
 ---@param comment review.Comment
 ---@param all review.FileAnchors[]
 ---@return review.Placement?
-local function find(comment, all)
+local function find(state, comment, all)
   for _, anchors in ipairs(all) do
     local line = found_line(comment, anchors)
     if line then
-      return {
-        comment = comment,
-        status = "found",
-        change_id = anchors.rev.change_id,
-        path = anchors.file.path,
-        line = line,
-      }
+      return placed(state, comment, "found", { rev = anchors.rev, file = anchors.file, line = line })
     end
   end
   return nil
@@ -162,17 +176,12 @@ end
 ---@return review.Placement
 local function by_line_number(state, comment)
   local rev = lookup.revision(state, comment.change_id)
-  if not (rev and lookup.file(state, rev, comment.path)) then
+  local file = rev and lookup.file(state, rev, comment.path)
+  if not (rev and file) then
     return { comment = comment, status = "orphaned" }
   end
   local status = #comment.keys == 0 and "found" or "outdated"
-  return {
-    comment = comment,
-    status = status,
-    change_id = rev.change_id,
-    path = comment.path,
-    line = comment.anchor.start_line,
-  }
+  return placed(state, comment, status, { rev = rev, file = file, line = comment.anchor.start_line })
 end
 
 --- Placement of every comment. Empty while the stack is not ok or a diff is loading.
@@ -184,7 +193,7 @@ function M.place(state)
   end
   local all = stack_anchors(state, state.stack.revisions)
   return vim.tbl_map(function(comment)
-    return find(comment, all) or by_line_number(state, comment)
+    return find(state, comment, all) or by_line_number(state, comment)
   end, state.comments)
 end
 

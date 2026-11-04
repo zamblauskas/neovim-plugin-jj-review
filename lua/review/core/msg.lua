@@ -21,6 +21,10 @@ local M = {}
 ---| review.Msg.StoreFailed
 ---| review.Msg.ToggleRequested
 ---| review.Msg.UnreviewedStepped
+---| review.Msg.CommentRequested
+---| review.Msg.CommentSubmitted
+---| review.Msg.CommentDeleteRequested
+---| review.Msg.CommentDeleted
 
 ---@class review.Msg.Opened
 ---@field type "Opened"
@@ -102,6 +106,29 @@ local M = {}
 ---@field path string
 ---@field line integer
 ---@field offset integer
+
+--- A comment key: open the input for a comment on the target.
+---@class review.Msg.CommentRequested
+---@field type "CommentRequested"
+---@field target review.CommentTarget
+
+---@class review.Msg.CommentSubmitted
+---@field type "CommentSubmitted"
+---@field draft review.CommentDraft
+---@field text string
+---@field id string
+---@field now string
+
+--- Delete the comment shown at the line of the file.
+---@class review.Msg.CommentDeleteRequested
+---@field type "CommentDeleteRequested"
+---@field change_id string
+---@field path string
+---@field line integer
+
+---@class review.Msg.CommentDeleted
+---@field type "CommentDeleted"
+---@field id string
 
 ---@class review.Msg.ContentLoaded
 ---@field type "ContentLoaded"
@@ -201,6 +228,29 @@ end
 ---@return review.Msg.UnreviewedStepped
 function M.unreviewed_stepped(change_id, path, line, offset)
   return { type = "UnreviewedStepped", change_id = change_id, path = path, line = line, offset = offset }
+end
+
+---@param target review.CommentTarget
+---@return review.Msg.CommentRequested
+function M.comment_requested(target)
+  return { type = "CommentRequested", target = target }
+end
+
+---@param draft review.CommentDraft
+---@return review.Msg.CommentSubmitted
+function M.comment_submitted(draft, text, id, now)
+  return { type = "CommentSubmitted", draft = draft, text = text, id = id, now = now }
+end
+
+---@return review.Msg.CommentDeleteRequested
+function M.comment_delete_requested(change_id, path, line)
+  return { type = "CommentDeleteRequested", change_id = change_id, path = path, line = line }
+end
+
+---@param id string
+---@return review.Msg.CommentDeleted
+function M.comment_deleted(id)
+  return { type = "CommentDeleted", id = id }
 end
 
 return M

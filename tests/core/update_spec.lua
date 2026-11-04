@@ -168,6 +168,57 @@ describe("core.update", function()
     end)
   end)
 
+  describe("comments", function()
+    local added = {
+      status = "added",
+      path = "a.txt",
+      binary = false,
+      hunks = { { old_start = 0, old_count = 0, new_start = 1, new_count = 1, lines = { { kind = "+", text = "x" } } } },
+    }
+
+    ---@return review.State
+    local function ready()
+      local state = update(opened_state(), msg.root_resolved(1, "/repo"))
+      state = update(state, msg.stack_loaded(1, { rev("a", {}) }))
+      state = update(state, msg.diff_loaded(1, "a", { added }))
+      return (update(state, msg.content_loaded(1, "a", "a.txt", { "x" })))
+    end
+
+    local target = { type = "line", change_id = "a", path = "a.txt", line = 1 }
+
+    it("opens the input with a draft", function()
+      local _, effects = update(ready(), msg.comment_requested(target))
+      assert.are.same({ "OpenCommentInput" }, types(effects))
+      assert.are.same("a.txt:1", effects[1].title)
+    end)
+
+    it("adds a submitted comment and saves it", function()
+      local _, input = update(ready(), msg.comment_requested(target))
+      local state, effects = update(ready(), msg.comment_submitted(input[1].draft, "why?", "c-1", "T"))
+      assert.are.same(
+        { "c-1", "why?", "T" },
+        { state.comments[1].id, state.comments[1].text, state.comments[1].created }
+      )
+      assert.are.same({ "SaveComments", "RenderDiff", "RenderExplorer" }, types(effects))
+    end)
+
+    it("ignores an empty comment", function()
+      local _, input = update(ready(), msg.comment_requested(target))
+      local _, effects = update(ready(), msg.comment_submitted(input[1].draft, "  \n", "c-1", "T"))
+      assert.are.same({}, effects)
+    end)
+
+    it("deletes the comment shown at the line", function()
+      local _, input = update(ready(), msg.comment_requested(target))
+      local state = update(ready(), msg.comment_submitted(input[1].draft, "why?", "c-1", "T"))
+      local next_state, effects = update(state, msg.comment_delete_requested("a", "a.txt", 1))
+      assert.are.same({}, next_state.comments)
+      assert.are.same({ set = nil, add = {}, remove = { "c-1" } }, effects[1].patch)
+      local _, none = update(state, msg.comment_delete_requested("a", "a.txt", 2))
+      assert.are.same({}, none)
+    end)
+  end)
+
   describe("refresh", function()
     ---@return review.State
     local function loaded()

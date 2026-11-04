@@ -47,16 +47,27 @@ local function set_window_options(win)
   wo.foldcolumn, wo.spell, wo.list = "0", false, false
 end
 
+--- Row actions by config key name.
+local ROW_ACTIONS = {
+  toggle_file = {
+    function(target)
+      return actions.toggle_file(target, clock.now())
+    end,
+    "Toggle reviewed: file",
+  },
+  delete_comment = { actions.delete_comment, "Delete orphaned comment" },
+}
+
 ---@param buf integer
 ---@param app review.App
-local function set_toggle_keymap(buf, app)
-  local key = app.state().config.keymaps.toggle_file
-  if key then
-    vim.keymap.set("n", key, function()
-      on_cursor_row(app, function(target)
-        return actions.toggle_file(target, clock.now())
-      end)
-    end, { buffer = buf, desc = "Toggle reviewed: file" })
+local function set_row_keymaps(buf, app)
+  local keymaps = app.state().config.keymaps
+  for name, row_action in pairs(ROW_ACTIONS) do
+    if keymaps[name] then
+      vim.keymap.set("n", keymaps[name], function()
+        on_cursor_row(app, row_action[1])
+      end, { buffer = buf, desc = row_action[2] })
+    end
   end
 end
 
@@ -70,7 +81,7 @@ local function set_keymaps(buf, app)
   vim.keymap.set("n", "<CR>", function()
     on_cursor_row(app, actions.enter)
   end, { buffer = buf, desc = "Fold revision / open file" })
-  set_toggle_keymap(buf, app)
+  set_row_keymaps(buf, app)
 end
 
 --- Keymaps. Closing the window (`:q`) closes the review too.

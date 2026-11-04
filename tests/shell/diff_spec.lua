@@ -146,6 +146,22 @@ describe("shell.diff", function()
     assert.are.same("", vim.api.nvim_buf_get_name(vim.api.nvim_win_get_buf(win)))
   end)
 
+  it("dispatches comment messages", function()
+    diff.open(effect.open_buffer("abc", "a.txt", { "1", "2", "3" }, 2), app)
+    vim.api.nvim_feedkeys(
+      vim.keycode("<leader>rc<leader>rC<leader>rx") .. "Vj" .. vim.keycode("<leader>rc"),
+      "x",
+      false
+    )
+    local base = { change_id = "abc", path = "a.txt" }
+    assert.are.same({
+      msg.comment_requested(vim.tbl_extend("force", base, { type = "line", line = 2 })),
+      msg.comment_requested(vim.tbl_extend("force", base, { type = "block", line = 2 })),
+      msg.comment_delete_requested("abc", "a.txt", 2),
+      msg.comment_requested(vim.tbl_extend("force", base, { type = "range", first = 2, last = 3 })),
+    }, app.messages)
+  end)
+
   it("wipes its buffers on close", function()
     diff.open(effect.open_buffer("abc", "a.txt", { "x" }, 1), app)
     local buf = vim.api.nvim_get_current_buf()

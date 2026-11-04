@@ -14,6 +14,7 @@ local M = {}
 ---| review.Effect.SaveMarks
 ---| review.Effect.ClearStore
 ---| review.Effect.SaveComments
+---| review.Effect.OpenCommentInput
 ---| review.Effect.Notify
 ---| review.Effect.MoveCursor
 ---| review.Effect.StartWatcher
@@ -112,6 +113,12 @@ local M = {}
 --- The open file is gone: the diff window shows an empty buffer; review buffers are wiped.
 ---@class review.Effect.CloseDiff
 ---@field type "CloseDiff"
+
+--- Ask for the comment text. Submit → CommentSubmitted with the draft.
+---@class review.Effect.OpenCommentInput
+---@field type "OpenCommentInput"
+---@field title string
+---@field draft review.CommentDraft
 
 ---@class review.Effect.OpenTab
 ---@field type "OpenTab"
@@ -227,6 +234,13 @@ end
 ---@return review.Effect.StopWatcher
 function M.stop_watcher()
   return { type = "StopWatcher" }
+end
+
+---@param title string
+---@param draft review.CommentDraft
+---@return review.Effect.OpenCommentInput
+function M.open_comment_input(title, draft)
+  return { type = "OpenCommentInput", title = title, draft = draft }
 end
 
 return M

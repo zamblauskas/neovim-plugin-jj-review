@@ -16,6 +16,9 @@ local M = {}
 ---@field diff table         -- review.shell.diff
 ---@field store table        -- review.shell.store
 ---@field watcher table      -- review.shell.watcher
+---@field comment_input table -- review.shell.comment_input
+---@field ids table          -- review.shell.ids
+---@field clock table        -- review.shell.clock
 
 ---@param err string
 local function notify_error(err)
@@ -218,6 +221,11 @@ local function diff_handlers(ports)
     end,
     CloseDiff = function()
       ports.diff.close_file()
+    end,
+    OpenCommentInput = function(e, app)
+      ports.comment_input.open(e.title, function(text)
+        app.dispatch(msg.comment_submitted(e.draft, text, ports.ids.comment_id(), ports.clock.now()))
+      end)
     end,
     MoveCursor = function(e)
       vim.api.nvim_win_set_cursor(0, { e.line, 0 })

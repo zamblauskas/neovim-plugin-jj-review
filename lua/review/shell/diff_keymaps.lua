@@ -13,6 +13,9 @@ local DESCRIPTIONS = {
   toggle = "Toggle reviewed: line",
   toggle_block = "Toggle reviewed: removed block",
   toggle_file = "Toggle reviewed: file",
+  comment = "Comment: line",
+  comment_block = "Comment: removed block",
+  delete_comment = "Delete comment at the line",
   next_unreviewed = "Next unreviewed change",
   prev_unreviewed = "Previous unreviewed change",
   next_file = "Next file",
@@ -44,6 +47,25 @@ local function toggle_actions(file)
   }
 end
 
+--- Comment actions by config key name.
+---@param file review.BufferFile
+---@return table<string, fun(): review.Msg>
+local function comment_actions(file)
+  local function at_cursor(type)
+    return function()
+      local target = { type = type, change_id = file.change_id, path = file.path, line = vim.fn.line(".") }
+      return msg.comment_requested(target)
+    end
+  end
+  return {
+    comment = at_cursor("line"),
+    comment_block = at_cursor("block"),
+    delete_comment = function()
+      return msg.comment_delete_requested(file.change_id, file.path, vim.fn.line("."))
+    end,
+  }
+end
+
 --- Navigation actions by config key name.
 ---@param file review.BufferFile
 ---@return table<string, fun(): review.Msg>
@@ -66,32 +88,51 @@ local function step_actions(file)
   }
 end
 
---- Visual mode toggle: the selected lines. Leaves visual mode.
+--- The selected line range as target fields. Leaves visual mode.
 ---@param file review.BufferFile
----@return review.Msg
-local function visual_toggle(file)
+---@return table
+local function visual_range(file)
   local a, b = vim.fn.line("v"), vim.fn.line(".")
   vim.api.nvim_feedkeys(vim.keycode("<Esc>"), "nx", false)
-  return toggle(file, { type = "range", first = math.min(a, b), last = math.max(a, b) })
+  return { type = "range", change_id = file.change_id, path = file.path, first = math.min(a, b), last = math.max(a, b) }
+end
+
+--- Visual mode actions by config key name.
+---@param file review.BufferFile
+---@return table<string, fun(): review.Msg>
+local function visual_actions(file)
+  return {
+    toggle = function()
+      return msg.toggle_requested(visual_range(file), clock.now())
+    end,
+    comment = function()
+      return msg.comment_requested(visual_range(file))
+    end,
+  }
+end
+
+---@param buf integer
+---@param mode string
+---@param actions table<string, fun(): review.Msg>
+---@param app review.App
+local function map_all(buf, mode, actions, app)
+  local keymaps = app.state().config.keymaps
+  for name, action in pairs(actions) do
+    if keymaps[name] then
+      vim.keymap.set(mode, keymaps[name], function()
+        app.dispatch(action())
+      end, { buffer = buf, desc = DESCRIPTIONS[name] })
+    end
+  end
 end
 
 ---@param buf integer
 ---@param file review.BufferFile
 ---@param app review.App
 function M.set(buf, file, app)
-  local keymaps = app.state().config.keymaps
-  for name, action in pairs(vim.tbl_extend("error", toggle_actions(file), step_actions(file))) do
-    if keymaps[name] then
-      vim.keymap.set("n", keymaps[name], function()
-        app.dispatch(action())
-      end, { buffer = buf, desc = DESCRIPTIONS[name] })
-    end
-  end
-  if keymaps.toggle then
-    vim.keymap.set("x", keymaps.toggle, function()
-      app.dispatch(visual_toggle(file))
-    end, { buffer = buf, desc = "Toggle reviewed: range" })
-  end
+  local normal = vim.tbl_extend("error", toggle_actions(file), comment_actions(file), step_actions(file))
+  map_all(buf, "n", normal, app)
+  map_all(buf, "x", visual_actions(file), app)
 end
 
 return M

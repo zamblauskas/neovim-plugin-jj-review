@@ -23,6 +23,9 @@ local function create_app(config)
     diff = require("review.shell.diff"),
     store = require("review.shell.store"),
     watcher = require("review.shell.watcher"),
+    comment_input = require("review.shell.comment_input"),
+    ids = require("review.shell.ids"),
+    clock = require("review.shell.clock"),
   }
   return app_mod.create(
     state_mod.initial(config),
