@@ -3,6 +3,8 @@
 -- Context: the line, 2 lines above and 2 below, from the same side's text. Lines out of the hunk are at the
 -- file edge (the diff has 2 context lines), so they are empty.
 -- A line whose normalized text is empty is not reviewable: it gets no key.
+-- Comment anchors: every non-blank line in a hunk. Changed lines use their key. Unchanged lines (new side)
+-- get "=|path|hash|occurrence"; it is never a review key.
 
 local tbl = require("review.lib.tbl")
 
@@ -42,38 +44,57 @@ local function context_hash(lines, pos)
   return vim.fn.sha256(table.concat(parts, "\n"))
 end
 
---- Hash of each reviewable line of one side, top to bottom.
+--- Hash of each non-blank line of one side, top to bottom: changed lines, or unchanged lines.
 ---@param hunk review.Hunk
 ---@param side "+"|"-"
+---@param changed boolean
 ---@return { index: integer, hash: string }[]
-local function reviewable_hashes(hunk, side)
+local function line_hashes(hunk, side, changed)
   local lines, out = side_lines(hunk, side), {}
   for pos, line in ipairs(lines) do
-    if line.changed and line.text ~= "" then
+    if line.changed == changed and line.text ~= "" then
       table.insert(out, { index = line.index, hash = context_hash(lines, pos) })
     end
   end
   return out
 end
 
+--- Key kinds: tag, side of the text, changed lines or not.
+--- "=" keys are comment anchors of unchanged lines. They have their own occurrence count.
+local KINDS = { { "+", "+", true }, { "-", "-", true }, { "=", "+", false } }
+
 ---@class review.KeyContext
 ---@field paths table<string, string>  -- by side
----@field seen table<string, integer>  -- occurrences so far, by "side|path|hash"
+---@field seen table<string, integer>  -- occurrences so far, by "tag|path|hash"
 
---- Keys of the reviewable lines of one hunk, by line index. Counts occurrences in `ctx.seen`.
+--- Keys of the non-blank lines of one hunk, by line index. Counts occurrences in `ctx.seen`.
 ---@param hunk review.Hunk
 ---@param ctx review.KeyContext
 ---@return table<integer, string>
 local function hunk_keys(hunk, ctx)
   local keys = {}
-  for _, side in ipairs({ "+", "-" }) do
-    for _, item in ipairs(reviewable_hashes(hunk, side)) do
-      local id = side .. "|" .. ctx.paths[side] .. "|" .. item.hash
+  for _, kind in ipairs(KINDS) do
+    local tag, side, changed = kind[1], kind[2], kind[3]
+    for _, item in ipairs(line_hashes(hunk, side, changed)) do
+      local id = tag .. "|" .. ctx.paths[side] .. "|" .. item.hash
       ctx.seen[id] = (ctx.seen[id] or 0) + 1
       keys[item.index] = id .. "|" .. ctx.seen[id]
     end
   end
   return keys
+end
+
+--- Line with its keys: a changed line gets `key` (review) and `anchor`; an unchanged line only `anchor`.
+---@param line review.DiffLine
+---@param key string?
+---@return review.DiffLine
+local function keyed_line(line, key)
+  if not key then
+    return line
+  elseif line.kind == " " then
+    return tbl.with(line, { anchor = key })
+  end
+  return tbl.with(line, { key = key, anchor = key })
 end
 
 ---@param hunk review.Hunk
@@ -82,7 +103,7 @@ end
 local function with_keys(hunk, keys)
   local lines = {}
   for i, line in ipairs(hunk.lines) do
-    lines[i] = keys[i] and tbl.with(line, { key = keys[i] }) or line
+    lines[i] = keyed_line(line, keys[i])
   end
   return tbl.with(hunk, { lines = lines })
 end

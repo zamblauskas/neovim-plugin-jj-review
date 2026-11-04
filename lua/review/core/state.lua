@@ -15,7 +15,7 @@ local M = {}
 ---@field stack review.Stack
 ---@field diffs table<string, review.FileDiff[]>  -- by commit id
 ---@field marks review.Marks            -- by line key
----@field comments table[]             -- (v0.5)
+---@field comments review.Comment[]
 ---@field folds review.Folds           -- explorer: user fold choices by change id
 ---@field fold_default review.FoldDefault
 ---@field marks_loaded boolean         -- marks.json was read at least once

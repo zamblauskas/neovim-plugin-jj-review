@@ -10,6 +10,7 @@ local M = {}
 ---@field text string
 ---@field no_eol? true  -- "\ No newline at end of file" follows this line
 ---@field key? string    -- line key of a reviewable line (core/keys.lua)
+---@field anchor? string -- comment anchor: the key, or an "=" key for an unchanged line (core/keys.lua)
 
 ---@class review.Hunk
 ---@field old_start integer
