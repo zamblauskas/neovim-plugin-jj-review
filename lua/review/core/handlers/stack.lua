@@ -3,6 +3,7 @@
 local effect = require("review.core.effect")
 local folds = require("review.core.folds")
 local keys = require("review.core.keys")
+local modes = require("review.core.modes")
 local open_file = require("review.core.open_file")
 local stack = require("review.core.stack")
 local tbl = require("review.lib.tbl")
@@ -100,7 +101,7 @@ end
 ---@return review.State, review.Effect[]
 function M.StackLoaded(state, msg)
   local built = stack.build(msg.revisions)
-  local next_state = with_stack(state, built)
+  local next_state = tbl.with(with_stack(state, built), { disk_commit = modes.disk_commit(msg.revisions) })
   local effects = vim.list_extend({ effect.render_explorer() }, missing_diffs(state, built))
   return with_followed(tbl.with(next_state, { fold_default = folds.update_default(next_state) }), effects)
 end

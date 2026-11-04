@@ -60,7 +60,14 @@ local M = {}
 ---@field path string
 ---@field lines string[]
 ---@field cursor_line integer  -- 1-based; the shell clamps it to the buffer
----@field keep_view boolean     -- the buffer shows an older commit of the file: keep cursor and scroll
+---@field keep_view boolean     -- the window shows an older version of the file: keep cursor and scroll
+---@field mode review.Mode       -- working_copy: the real file buffer at `file_path`; view: a scratch buffer
+---@field file_path? string      -- absolute path (working_copy)
+
+---@class review.OpenBufferOpts
+---@field keep_view? boolean
+---@field mode? review.Mode
+---@field file_path? string
 
 --- Draw the diff of the open file (`state.open_file`) on its buffer.
 ---@class review.Effect.RenderDiff
@@ -170,14 +177,18 @@ function M.load_content(generation, root, commit_id, path)
 end
 
 ---@return review.Effect.OpenBuffer
-function M.open_buffer(change_id, path, lines, cursor_line, keep_view)
+---@param opts? review.OpenBufferOpts
+function M.open_buffer(change_id, path, lines, cursor_line, opts)
+  opts = opts or {}
   return {
     type = "OpenBuffer",
     change_id = change_id,
     path = path,
     lines = lines,
     cursor_line = cursor_line,
-    keep_view = keep_view or false,
+    keep_view = opts.keep_view or false,
+    mode = opts.mode or "view",
+    file_path = opts.file_path,
   }
 end
 

@@ -3,12 +3,14 @@
 local changes = require("review.core.changes")
 local effect = require("review.core.effect")
 local lookup = require("review.core.lookup")
+local modes = require("review.core.modes")
 local tbl = require("review.lib.tbl")
 
 local M = {}
 
 --- Show the file: open the buffer, or load the content first.
---- When the buffer already shows an older commit of the file, the view (cursor, scroll) is kept.
+--- The text is always loaded: core needs it in both modes (line counts, drafts).
+--- When the window already shows an older version of the file (commit or mode), the view is kept.
 ---@param state review.State
 ---@param rev review.Revision
 ---@param file review.FileDiff
@@ -20,10 +22,11 @@ function M.show(state, rev, file)
       { effect.load_content(state.generation, assert(state.root, "root not resolved"), rev.commit_id, file.path) }
   end
   local open = assert(state.open_file, "open file")
-  local keep_view = open.commit_id ~= nil
-  local cursor_line = changes.first_line(file, #lines)
-  return tbl.with(state, { open_file = tbl.with(open, { commit_id = rev.commit_id }) }),
-    { effect.open_buffer(rev.change_id, file.path, lines, cursor_line, keep_view), effect.render_diff() }
+  local mode = modes.mode(state, rev, file)
+  local opts = { keep_view = open.commit_id ~= nil, mode = mode, file_path = state.root .. "/" .. file.path }
+  local buffer = effect.open_buffer(rev.change_id, file.path, lines, changes.first_line(file, #lines), opts)
+  return tbl.with(state, { open_file = tbl.with(open, { commit_id = rev.commit_id, mode = mode }) }),
+    { buffer, effect.render_diff() }
 end
 
 ---@param state review.State
@@ -45,12 +48,14 @@ function M.follow(state)
   if not rev then
     return close(state)
   end
-  if rev.commit_id == open.commit_id or not state.diffs[rev.commit_id] then
+  if not state.diffs[rev.commit_id] then
     return state, {}
   end
   local file = lookup.file(state, rev, open.path)
   if not file then
     return close(state)
+  elseif rev.commit_id == open.commit_id and modes.mode(state, rev, file) == open.mode then
+    return state, {}
   end
   return M.show(state, rev, file)
 end

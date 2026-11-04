@@ -138,7 +138,21 @@ describe("core.update", function()
       state = update(state, msg.diff_loaded(1, "b2", { added }))
       local next_state, effects = update(state, msg.content_loaded(1, "b2", "a.txt", { "y" }))
       assert.are.same("b2", next_state.open_file.commit_id)
-      assert.are.same({ effect.open_buffer("b", "a.txt", { "y" }, 1, true), effect.render_diff() }, effects)
+      assert.are.same({
+        effect.open_buffer("b", "a.txt", { "y" }, 1, { keep_view = true, file_path = "/repo/a.txt" }),
+        effect.render_diff(),
+      }, effects)
+    end)
+
+    it("opens the real buffer when the revision becomes the working copy (jj edit)", function()
+      local b1 = vim.tbl_extend("force", rev("b", { "a" }), { commit_id = "b1", working_copy = true })
+      local state, effects = update(showing(), msg.stack_loaded(1, { b1, rev("a", {}) }))
+      assert.are.same("working_copy", state.open_file.mode)
+      local open = effects[#effects - 1]
+      assert.are.same(
+        { "OpenBuffer", "working_copy", "/repo/a.txt", true },
+        { open.type, open.mode, open.file_path, open.keep_view }
+      )
     end)
 
     it("waits for the new diff", function()
@@ -297,7 +311,10 @@ describe("core.update", function()
       local state = update(loaded_state(), msg.file_opened("b", "a.txt"))
       local next_state, effects = update(state, msg.content_loaded(1, "b", "a.txt", { "x" }))
       assert.are.same({ ["a.txt"] = { "x" } }, next_state.contents.b)
-      assert.are.same({ effect.open_buffer("b", "a.txt", { "x" }, 1), effect.render_diff() }, effects)
+      assert.are.same(
+        { effect.open_buffer("b", "a.txt", { "x" }, 1, { file_path = "/repo/a.txt" }), effect.render_diff() },
+        effects
+      )
     end)
 
     it("opens a cached file without loading", function()
@@ -315,13 +332,16 @@ describe("core.update", function()
 
     it("opens a deleted file with one empty line, without loading", function()
       local _, effects = update(loaded_state(), msg.file_opened("b", "d.txt"))
-      assert.are.same({ effect.open_buffer("b", "d.txt", { "" }, 1), effect.render_diff() }, effects)
+      assert.are.same(
+        { effect.open_buffer("b", "d.txt", { "" }, 1, { file_path = "/repo/d.txt" }), effect.render_diff() },
+        effects
+      )
     end)
 
     it("steps to the next and previous file in explorer order", function()
       local state = update(loaded_state(), msg.file_opened("b", "a.txt"))
       local next_state, effects = update(state, msg.file_stepped(1))
-      assert.are.same({ change_id = "b", path = "d.txt", commit_id = "b" }, next_state.open_file)
+      assert.are.same({ change_id = "b", path = "d.txt", commit_id = "b", mode = "view" }, next_state.open_file)
       assert.are.same({ "OpenBuffer", "RenderDiff" }, types(effects))
       assert.are.same("a.txt", update(next_state, msg.file_stepped(-1)).open_file.path)
     end)
