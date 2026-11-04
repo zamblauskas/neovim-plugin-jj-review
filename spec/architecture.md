@@ -56,6 +56,11 @@ lua/review/
     counts.lua          counts per file, revision, stack
     toggle.lua          toggle rules → new mark set
     comments.lua        lookup: found / outdated / orphaned
+    folds.lua           explorer fold state: user choice, default rule
+    file_tree.lua       files → tree entries in display order (explorer, ]R)
+    explorer_actions.lua  (action, row target) → message
+    lookup.lua          revision by change id, file by path
+    changes.lua         positions of changes in the new text
   lib/
     tbl.lua             pure table helpers: with (immutable update)
     list.lua            pure list helpers: pluck, index_by
@@ -63,17 +68,20 @@ lua/review/
     log.lua             jj log template output → revisions
     diff.lua            jj diff --git output → file diffs
   view/
-    explorer.lua        state → explorer lines, highlights, row map
+    explorer.lua        state → explorer lines, highlights, row targets
     diff.lua            file diff + marks + comments → extmark specs
   shell/
     lib/
       async.lua         coroutine wrapper: run, await
       schedule.lua      once_per_tick (coalesce calls into one vim.schedule)
+      semaphore.lua     run at most N async tasks at once (max_parallel_jj)
     jj.lua              JJ port adapter: build args, run with vim.system
     store.lua           load, merge, atomic save of JSON
     effects.lua         effect interpreter, render batching
     apply.lua           apply view specs to buffers (namespaces)
+    layout.lua          review tab port (Facade): tab page, diff window
     explorer.lua        explorer window port (only owner of its buffer and window)
+    diff.lua            diff buffer port: review:// scratch buffers, render
     highlights.lua      highlight groups (default links)
     watcher.lua         op_heads watcher + focus autocmds
     keymaps.lua         buffer-local keymaps → messages
@@ -97,40 +105,42 @@ Lib modules do not require `core/`, `parse/`, `view/`, or other `shell/` modules
 ## State
 
 See `core/state.lua` (`review.State`). Main fields: `config`, `open`, `generation`, `cwd`, `root`, `revset`,
-`op_id`, `stack`, `diffs` (by commit id), `marks` (by line key), `comments`. UI fields (folds, open file, mode)
-are added with v0.2.
+`op_id`, `stack`, `diffs` (by commit id), `contents` (new text lines by commit id and path), `marks` (by line key),
+`comments`, `folds` (user fold choice by change id), `open_file` (`{change_id, path}`).
 
 **Generation.** Each `Opened` increments `generation`. Effects carry it, and their result messages carry it back.
 `update` drops a message from an older generation, and every message except `Opened` while the review is closed.
 
 ## Messages
 
-v0.1 has the lifecycle messages and `RootResolved`, `OpChecked`, `StackLoaded`, `JjFailed`. The rest is the plan.
+v0.2 has the lifecycle messages (no `Cleared`), the JJ messages, `FoldToggled`, `FileOpened`, `FileStepped`. The rest is the plan.
+A failed `jj diff` or `jj file show` is a `JjFailed` (stack error state).
 
 | Group | Messages |
 |---|---|
 | Lifecycle | `Opened{cwd, revset}`, `Closed`, `Cleared` |
-| JJ | `RootResolved{root}`, `OpChecked{op_id}`, `StackLoaded{revisions}`, `DiffLoaded{commit_id, files}`, `ContentLoaded{commit_id, path, text}`, `JjFailed{args, stderr}` |
+| JJ | `RootResolved{root}`, `OpChecked{op_id}`, `StackLoaded{revisions}`, `DiffLoaded{commit_id, files}`, `ContentLoaded{commit_id, path, lines}`, `JjFailed{stderr}` |
 | Store | `StoreLoaded{marks, comments}` |
 | Review | `ToggleRequested{target}`, `CommentSubmitted{anchor, text}`, `CommentDeleted{id}` |
-| UI | `FoldToggled{change_id}`, `FileOpened{change_id, path}`, `EditRequested{change_id}` |
+| UI | `FoldToggled{change_id}`, `FileOpened{change_id, path}`, `FileStepped{offset}`, `EditRequested{change_id}` |
 
 ## Effects
 
-v0.1 has `ResolveRoot`, `CheckOp`, `LoadStack`, `OpenExplorer`, `CloseExplorer`, `RenderExplorer`. The rest is the plan.
+v0.2 has `ResolveRoot`, `CheckOp`, `LoadStack`, `LoadDiff`, `LoadContent`, `OpenTab`, `CloseTab`, `OpenBuffer`,
+`RenderExplorer`, `RenderDiff`. The rest is the plan. Effects for JJ carry `generation` and `root`.
 
 | Effect | Result message |
 |---|---|
 | `ResolveRoot{cwd}` | `RootResolved` or `JjFailed` |
 | `CheckOp{root}` | `OpChecked` |
 | `LoadStack{revset}` | `StackLoaded` or `JjFailed` |
-| `LoadDiff{change_id, commit_id}` | `DiffLoaded` |
-| `LoadContent{commit_id, path}` | `ContentLoaded` |
+| `LoadDiff{commit_id}` | `DiffLoaded` or `JjFailed` |
+| `LoadContent{commit_id, path}` | `ContentLoaded` or `JjFailed` |
 | `JjEdit{change_id}` | (watcher sees new operation → `OpChecked`) |
 | `LoadStore` / `SaveMarks` / `SaveComments` | `StoreLoaded` / none |
-| `OpenExplorer` / `CloseExplorer` | none |
+| `OpenTab` / `CloseTab` | none |
 | `RenderExplorer` / `RenderDiff` | none |
-| `OpenBuffer{change_id, path, mode}` | none |
+| `OpenBuffer{change_id, path, lines, cursor_line}` (mode added in v0.6) | none |
 | `Notify{level, text}` | none |
 
 Render is an effect, so `update` decides when to redraw. The shell computes the view from the new state and applies it.
@@ -156,9 +166,10 @@ Trigger: watcher on `.jj/repo/op_heads/` or focus → `CheckOp`. Same as Open st
 
 ### Open file
 
-1. `<CR>` in explorer → `FileOpened{change_id, path}`.
+1. `<CR>` in explorer → `FileOpened{change_id, path}`. `]R` / `[R` → `FileStepped{offset}` → same as `FileOpened`.
 2. Mode: working-copy if the revision is `@`, or `@` is empty and the revision is `@-`. Else view.
-3. View mode → `LoadContent`, then `OpenBuffer` (scratch). Working-copy mode → `OpenBuffer` (real file).
+3. View mode → `LoadContent` (if not cached), then `OpenBuffer` (scratch). Deleted and binary files need no
+   content. Working-copy mode → `OpenBuffer` (real file).
 4. `RenderDiff`.
 
 ## JJ calls
@@ -170,7 +181,7 @@ All reads use `--ignore-working-copy` (no snapshot, so no new operation, so no r
 | Op id | `jj op log -n1 --no-graph -T 'id'` |
 | Stack | `jj log -r <revset> --no-graph -T <template>` (change id, commit id, parent change ids, empty, first line of description) |
 | Diff | `jj diff -r <commit_id> --git -w --context 2` |
-| Content | `jj file show -r <commit_id> <path>` |
+| Content | `jj file show -r <commit_id> -- 'root-file:"<path>"'` (literal path; a bare path is a fileset expression) |
 | Edit | `jj edit <change_id>` |
 | Snapshot after save (working-copy mode) | `jj util snapshot` |
 

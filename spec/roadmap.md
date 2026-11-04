@@ -59,6 +59,11 @@ Browse the diff of every file in the stack. Read-only, no marks.
 
 Features: F-04, part of F-05 (view mode), F-14 (`-w`).
 
+Steps (one revision each): parse diff; load diffs (semaphore, `max_parallel_jj`); explorer file tree and folds;
+review tab (`shell/layout.lua`); open a file in view mode; diff view; `]R` / `[R`.
+
+Status: done.
+
 ## v0.3 — Mark reviewed
 
 The core value. You review a static stack and see progress.

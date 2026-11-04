@@ -18,21 +18,28 @@
 └─────────────────────────────────┴───────────────────────────────────────────────────┘
 ```
 
+- `:Review` opens a new tab page. Your other tabs do not change. `:Review` again goes to that tab.
 - Explorer: left split, fixed width.
-- Diff: one file at a time, in the main window.
+- Diff: one file at a time, in the diff window (right). If you close it, the next file opens a new one.
+- `:Review close` closes the tab.
 
 ## Explorer
 
 - Order: newest revision on top (same as `jj log`).
 - Revision row: `change-id-prefix: description   reviewed/total`.
-- File rows under the revision, grouped by directory (tree). Directory rows have no counts.
+- File rows under the revision, grouped by directory (tree). Directories first, then files, sorted by name.
+  A directory with one subdirectory and no files is one row (`src/app/service/`). Directory rows have no counts
+  and do not fold.
+- File row: colored status letter (`A`, `M`, `D`, `R`, `C`), name, `← old/path` for a rename or copy,
+  `(binary)` for a binary file.
 - Counts: `reviewed / total` reviewable lines. Binary file: `0/1` or `1/1`.
 - Icons:
   - `✅` everything reviewed (file or revision).
   - `💬` one comment or more in the file or revision.
   - `⚠` outdated or orphaned comment.
   - `◆` revision is the working copy (`@`).
-- Default fold: only the oldest revision with unreviewed lines is unfolded.
+- Default fold: only the oldest revision with unreviewed lines is unfolded. (v0.2: the oldest revision.)
+  A fold you set stays until the review closes.
 - Orphaned comments section at the bottom. Hidden if empty.
 
 ### Error state
