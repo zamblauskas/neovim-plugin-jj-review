@@ -171,6 +171,9 @@ local function ui_handlers(ports)
     OpenBuffer = function(e, app)
       ports.diff.open(e, app)
     end,
+    MoveCursor = function(e)
+      vim.api.nvim_win_set_cursor(0, { e.line, 0 })
+    end,
     RenderExplorer = schedule.once_per_tick(function(_, app)
       ports.explorer.render(app.state())
     end),

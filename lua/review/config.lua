@@ -15,6 +15,8 @@ local M = {}
 ---@field toggle string|false        -- diff buffer: line or visual range
 ---@field toggle_block string|false  -- diff buffer: removed block at the cursor line
 ---@field toggle_file string|false   -- diff buffer and explorer: file
+---@field next_unreviewed string|false  -- diff buffer: next unreviewed change in the file
+---@field prev_unreviewed string|false  -- diff buffer: previous unreviewed change in the file
 ---@field next_file string|false  -- diff buffer: next file in the revision
 ---@field prev_file string|false  -- diff buffer: previous file in the revision
 
@@ -30,6 +32,8 @@ M.defaults = {
     toggle = "<leader>rr",
     toggle_block = "<leader>rR",
     toggle_file = "<leader>rf",
+    next_unreviewed = "]r",
+    prev_unreviewed = "[r",
     next_file = "]R",
     prev_file = "[R",
   },

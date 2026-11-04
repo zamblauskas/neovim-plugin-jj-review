@@ -110,6 +110,15 @@ describe("shell.diff", function()
     assert.are.same("n", vim.api.nvim_get_mode().mode)
   end)
 
+  it("dispatches UnreviewedStepped on ]r and [r from the cursor line", function()
+    diff.open(effect.open_buffer("abc", "a.txt", { "1", "2", "3" }, 2), app)
+    vim.api.nvim_feedkeys("]r[r", "x", false)
+    assert.are.same({
+      msg.unreviewed_stepped("abc", "a.txt", 2, 1),
+      msg.unreviewed_stepped("abc", "a.txt", 2, -1),
+    }, app.messages)
+  end)
+
   it("wipes its buffers on close", function()
     diff.open(effect.open_buffer("abc", "a.txt", { "x" }, 1), app)
     local buf = vim.api.nvim_get_current_buf()

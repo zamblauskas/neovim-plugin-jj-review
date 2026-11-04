@@ -13,6 +13,7 @@ local M = {}
 ---| review.Effect.LoadStore
 ---| review.Effect.SaveMarks
 ---| review.Effect.Notify
+---| review.Effect.MoveCursor
 ---| review.Effect.OpenTab
 ---| review.Effect.CloseTab
 ---| review.Effect.RenderExplorer
@@ -74,6 +75,11 @@ local M = {}
 ---@field type "Notify"
 ---@field level "info"|"warn"|"error"
 ---@field text string
+
+--- Move the cursor of the current window to `line` (column 0).
+---@class review.Effect.MoveCursor
+---@field type "MoveCursor"
+---@field line integer
 
 ---@class review.Effect.OpenTab
 ---@field type "OpenTab"
@@ -150,6 +156,12 @@ end
 ---@return review.Effect.Notify
 function M.notify(level, text)
   return { type = "Notify", level = level, text = text }
+end
+
+---@param line integer
+---@return review.Effect.MoveCursor
+function M.move_cursor(line)
+  return { type = "MoveCursor", line = line }
 end
 
 return M

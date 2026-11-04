@@ -13,6 +13,8 @@ local DESCRIPTIONS = {
   toggle = "Toggle reviewed: line",
   toggle_block = "Toggle reviewed: removed block",
   toggle_file = "Toggle reviewed: file",
+  next_unreviewed = "Next unreviewed change",
+  prev_unreviewed = "Previous unreviewed change",
   next_file = "Next file",
   prev_file = "Previous file",
 }
@@ -25,10 +27,10 @@ local function toggle(file, fields)
   return msg.toggle_requested(target, clock.now())
 end
 
---- Normal mode actions by config key name.
+--- Normal mode toggle actions by config key name.
 ---@param file review.BufferFile
 ---@return table<string, fun(): review.Msg>
-local function normal_actions(file)
+local function toggle_actions(file)
   return {
     toggle = function()
       return toggle(file, { type = "line", line = vim.fn.line(".") })
@@ -39,12 +41,28 @@ local function normal_actions(file)
     toggle_file = function()
       return toggle(file, { type = "file" })
     end,
-    next_file = function()
-      return msg.file_stepped(1)
-    end,
-    prev_file = function()
-      return msg.file_stepped(-1)
-    end,
+  }
+end
+
+--- Navigation actions by config key name.
+---@param file review.BufferFile
+---@return table<string, fun(): review.Msg>
+local function step_actions(file)
+  local function unreviewed(offset)
+    return function()
+      return msg.unreviewed_stepped(file.change_id, file.path, vim.fn.line("."), offset)
+    end
+  end
+  local function other_file(offset)
+    return function()
+      return msg.file_stepped(offset)
+    end
+  end
+  return {
+    next_unreviewed = unreviewed(1),
+    prev_unreviewed = unreviewed(-1),
+    next_file = other_file(1),
+    prev_file = other_file(-1),
   }
 end
 
@@ -62,7 +80,7 @@ end
 ---@param app review.App
 function M.set(buf, file, app)
   local keymaps = app.state().config.keymaps
-  for name, action in pairs(normal_actions(file)) do
+  for name, action in pairs(vim.tbl_extend("error", toggle_actions(file), step_actions(file))) do
     if keymaps[name] then
       vim.keymap.set("n", keymaps[name], function()
         app.dispatch(action())

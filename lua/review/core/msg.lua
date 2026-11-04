@@ -18,6 +18,7 @@ local M = {}
 ---| review.Msg.StoreLoaded
 ---| review.Msg.StoreFailed
 ---| review.Msg.ToggleRequested
+---| review.Msg.UnreviewedStepped
 
 ---@class review.Msg.Opened
 ---@field type "Opened"
@@ -81,6 +82,14 @@ local M = {}
 ---@field type "ToggleRequested"
 ---@field target review.ToggleTarget
 ---@field now string  -- ISO 8601 UTC, for new marks
+
+--- Go to the next (`offset` 1) or previous (-1) unreviewed change in the file, from `line`.
+---@class review.Msg.UnreviewedStepped
+---@field type "UnreviewedStepped"
+---@field change_id string
+---@field path string
+---@field line integer
+---@field offset integer
 
 ---@class review.Msg.ContentLoaded
 ---@field type "ContentLoaded"
@@ -165,6 +174,11 @@ end
 ---@return review.Msg.ToggleRequested
 function M.toggle_requested(target, now)
   return { type = "ToggleRequested", target = target, now = now }
+end
+
+---@return review.Msg.UnreviewedStepped
+function M.unreviewed_stepped(change_id, path, line, offset)
+  return { type = "UnreviewedStepped", change_id = change_id, path = path, line = line, offset = offset }
 end
 
 return M

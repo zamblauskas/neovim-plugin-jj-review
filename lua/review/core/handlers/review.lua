@@ -1,7 +1,9 @@
 -- Handlers: mark lines as reviewed.
 
 local effect = require("review.core.effect")
+local changes = require("review.core.changes")
 local lookup = require("review.core.lookup")
+local navigation = require("review.core.navigation")
 local targets = require("review.core.targets")
 local tbl = require("review.lib.tbl")
 local toggle = require("review.core.toggle")
@@ -19,6 +21,21 @@ local function target_keys(state, target)
     return {}
   end
   return targets.keys(file, #(lookup.new_lines(state, rev, file) or { "" }), target)
+end
+
+---@param state review.State
+---@param msg review.Msg.UnreviewedStepped
+---@return review.State, review.Effect[]
+function M.UnreviewedStepped(state, msg)
+  local rev = lookup.revision(state, msg.change_id)
+  local file = rev and lookup.file(state, rev, msg.path)
+  local lines = rev and file and lookup.new_lines(state, rev, file)
+  if not (file and lines) then
+    return state, {}
+  end
+  local segments = changes.segments(file, #lines)
+  local line = navigation.unreviewed_line(segments, state.marks, msg.line, msg.offset)
+  return state, line and { effect.move_cursor(line) } or {}
 end
 
 ---@param state review.State
