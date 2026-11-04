@@ -3,22 +3,29 @@ local config = require("review.config")
 local diff = require("review.shell.diff")
 local effect = require("review.core.effect")
 local layout = require("review.shell.layout")
+local msg = require("review.core.msg")
 local state_mod = require("review.core.state")
 local tbl = require("review.lib.tbl")
 
+--- Fake app that records dispatched messages.
 local function fake_app()
   local state = tbl.with(state_mod.initial(config.resolve()), { open = true })
-  return {
-    state = function()
-      return state
-    end,
-    dispatch = function() end,
-  }
+  local app = { messages = {} }
+  function app.state()
+    return state
+  end
+  function app.dispatch(m)
+    table.insert(app.messages, m)
+  end
+  return app
 end
 
 describe("shell.diff", function()
+  local app
+
   before_each(function()
-    layout.open(fake_app())
+    app = fake_app()
+    layout.open(app)
   end)
 
   after_each(function()
@@ -29,7 +36,7 @@ describe("shell.diff", function()
   end)
 
   it("shows a read-only buffer in the diff window, with the cursor at the line", function()
-    diff.open(effect.open_buffer("abc", "src/a.lua", { "one", "two" }, 2))
+    diff.open(effect.open_buffer("abc", "src/a.lua", { "one", "two" }, 2), app)
     local win = assert(layout.handles().diff_win)
     local buf = vim.api.nvim_win_get_buf(win)
     assert.are.same(win, vim.api.nvim_get_current_win())
@@ -40,16 +47,16 @@ describe("shell.diff", function()
   end)
 
   it("reuses the buffer of the same file and updates its lines", function()
-    diff.open(effect.open_buffer("abc", "a.txt", { "old" }, 1))
+    diff.open(effect.open_buffer("abc", "a.txt", { "old" }, 1), app)
     local first = vim.api.nvim_get_current_buf()
-    diff.open(effect.open_buffer("abc", "b.txt", { "b" }, 1))
-    diff.open(effect.open_buffer("abc", "a.txt", { "new" }, 1))
+    diff.open(effect.open_buffer("abc", "b.txt", { "b" }, 1), app)
+    diff.open(effect.open_buffer("abc", "a.txt", { "new" }, 1), app)
     assert.are.same(first, vim.api.nvim_get_current_buf())
     assert.are.same({ "new" }, vim.api.nvim_buf_get_lines(first, 0, -1, false))
   end)
 
   it("clamps the cursor to the buffer", function()
-    diff.open(effect.open_buffer("abc", "a.txt", { "" }, 5))
+    diff.open(effect.open_buffer("abc", "a.txt", { "" }, 5), app)
     assert.are.same({ 1, 0 }, vim.api.nvim_win_get_cursor(0))
   end)
 
@@ -66,20 +73,26 @@ describe("shell.diff", function()
     }
     local file =
       require("review.parse.diff").parse("diff --git a/f b/f\n--- a/f\n+++ b/f\n@@ -1,2 +1,2 @@\n-x\n+y\n z\n")[1]
-    local state = tbl.with(fake_app().state(), {
+    local state = tbl.with(app.state(), {
       stack = { type = "ok", revisions = { rev } },
       diffs = { c1 = { file } },
       open_file = { change_id = "abc", path = "f" },
     })
-    diff.open(effect.open_buffer("abc", "f", { "y", "z" }, 1))
+    diff.open(effect.open_buffer("abc", "f", { "y", "z" }, 1), app)
     diff.render(state)
     local marks = vim.api.nvim_buf_get_extmarks(0, -1, 0, -1, { details = true })
     assert.are.same(2, #marks)
     assert.are.same(1, vim.fn.winsaveview().topfill)
   end)
 
+  it("dispatches FileStepped on ]R and [R", function()
+    diff.open(effect.open_buffer("abc", "a.txt", { "x" }, 1), app)
+    vim.api.nvim_feedkeys("]R[R", "x", false)
+    assert.are.same({ msg.file_stepped(1), msg.file_stepped(-1) }, app.messages)
+  end)
+
   it("wipes its buffers on close", function()
-    diff.open(effect.open_buffer("abc", "a.txt", { "x" }, 1))
+    diff.open(effect.open_buffer("abc", "a.txt", { "x" }, 1), app)
     local buf = vim.api.nvim_get_current_buf()
     diff.close()
     assert.is_false(vim.api.nvim_buf_is_valid(buf))

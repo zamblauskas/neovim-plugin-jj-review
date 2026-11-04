@@ -136,8 +136,8 @@ local function ui_handlers(ports)
       ports.layout.close()
       ports.diff.close()
     end,
-    OpenBuffer = function(e)
-      ports.diff.open(e)
+    OpenBuffer = function(e, app)
+      ports.diff.open(e, app)
     end,
     RenderExplorer = schedule.once_per_tick(function(_, app)
       ports.explorer.render(app.state())

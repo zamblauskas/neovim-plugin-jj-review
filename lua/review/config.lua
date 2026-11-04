@@ -11,6 +11,8 @@ local M = {}
 ---@class review.KeymapConfig
 ---@field open string|false
 ---@field close string|false
+---@field next_file string|false  -- diff buffer: next file in the revision
+---@field prev_file string|false  -- diff buffer: previous file in the revision
 
 ---@type review.Config
 M.defaults = {
@@ -20,6 +22,8 @@ M.defaults = {
   keymaps = {
     open = "<leader>jvv",
     close = "<leader>jvq",
+    next_file = "]R",
+    prev_file = "[R",
   },
 }
 

@@ -1,9 +1,11 @@
 -- Handlers: explorer and diff UI.
 
 local changes = require("review.core.changes")
+local file_tree = require("review.core.file_tree")
 local effect = require("review.core.effect")
 local folds = require("review.core.folds")
 local lookup = require("review.core.lookup")
+local messages = require("review.core.msg")
 local tbl = require("review.lib.tbl")
 
 local M = {}
@@ -63,6 +65,33 @@ function M.FileOpened(state, msg)
     return state, {}
   end
   return tbl.with(state, { open_file = { change_id = msg.change_id, path = msg.path } }), show(state, rev, file)
+end
+
+--- Path `offset` places after `path` in the revision, in explorer order. Nil past either end.
+---@param state review.State
+---@param rev review.Revision
+---@param path string
+---@param offset integer
+---@return string?
+local function stepped_path(state, rev, path, offset)
+  local paths = file_tree.paths(state.diffs[rev.commit_id] or {})
+  local index = vim.iter(ipairs(paths)):find(function(_, p)
+    return p == path
+  end)
+  return index and paths[index + offset]
+end
+
+---@param state review.State
+---@param msg review.Msg.FileStepped
+---@return review.State, review.Effect[]
+function M.FileStepped(state, msg)
+  local open = state.open_file
+  local rev = open and lookup.revision(state, open.change_id)
+  local path = open and rev and stepped_path(state, rev, open.path, msg.offset)
+  if not (rev and path) then
+    return state, {}
+  end
+  return M.FileOpened(state, messages.file_opened(rev.change_id, path))
 end
 
 --- Show the loaded content only if it is still for the open file.

@@ -14,6 +14,7 @@ local M = {}
 ---| review.Msg.FoldToggled
 ---| review.Msg.FileOpened
 ---| review.Msg.ContentLoaded
+---| review.Msg.FileStepped
 
 ---@class review.Msg.Opened
 ---@field type "Opened"
@@ -57,6 +58,11 @@ local M = {}
 ---@field type "FileOpened"
 ---@field change_id string
 ---@field path string
+
+--- Open the file `offset` places after the open file, in the same revision (explorer order).
+---@class review.Msg.FileStepped
+---@field type "FileStepped"
+---@field offset integer
 
 ---@class review.Msg.ContentLoaded
 ---@field type "ContentLoaded"
@@ -118,6 +124,12 @@ end
 ---@return review.Msg.ContentLoaded
 function M.content_loaded(generation, commit_id, path, lines)
   return { type = "ContentLoaded", generation = generation, commit_id = commit_id, path = path, lines = lines }
+end
+
+---@param offset integer
+---@return review.Msg.FileStepped
+function M.file_stepped(offset)
+  return { type = "FileStepped", offset = offset }
 end
 
 return M

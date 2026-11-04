@@ -4,6 +4,7 @@
 local apply = require("review.shell.apply")
 local layout = require("review.shell.layout")
 local lookup = require("review.core.lookup")
+local msg = require("review.core.msg")
 local view = require("review.view.diff")
 
 local M = {}
@@ -18,6 +19,21 @@ local buffers = {}
 ---@return string
 local function buffer_name(change_id, path)
   return "review://" .. change_id .. "/" .. path
+end
+
+--- Buffer-local keymaps. A key set to false in the config is not mapped.
+---@param buf integer
+---@param app review.App
+local function set_keymaps(buf, app)
+  local keymaps = app.state().config.keymaps
+  local steps = { { keymaps.next_file, 1, "Next file" }, { keymaps.prev_file, -1, "Previous file" } }
+  for _, step in ipairs(steps) do
+    if step[1] then
+      vim.keymap.set("n", step[1], function()
+        app.dispatch(msg.file_stepped(step[2]))
+      end, { buffer = buf, desc = step[3] })
+    end
+  end
 end
 
 ---@param name string
@@ -35,12 +51,14 @@ local function create_buffer(name, path)
 end
 
 ---@param e review.Effect.OpenBuffer
+---@param app review.App
 ---@return integer
-local function buffer_for(e)
+local function buffer_for(e, app)
   local name = buffer_name(e.change_id, e.path)
   local buf = buffers[name]
   if not (buf and vim.api.nvim_buf_is_valid(buf)) then
     buf = create_buffer(name, e.path)
+    set_keymaps(buf, app)
     buffers[name] = buf
   end
   return buf
@@ -56,8 +74,9 @@ end
 
 --- Show the file in the diff window and focus it, cursor at `cursor_line`.
 ---@param e review.Effect.OpenBuffer
-function M.open(e)
-  local buf = buffer_for(e)
+---@param app review.App
+function M.open(e, app)
+  local buf = buffer_for(e, app)
   set_lines(buf, e.lines)
   local win = layout.diff_window(buf)
   vim.api.nvim_win_set_buf(win, buf)
