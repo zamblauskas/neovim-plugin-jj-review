@@ -18,6 +18,7 @@ local M = {}
 ---@field comments table[]             -- (v0.5)
 ---@field folds review.Folds           -- explorer: user fold choices by change id
 ---@field fold_default review.FoldDefault
+---@field marks_loaded boolean         -- marks.json was read at least once
 ---@field contents table<string, table<string, string[]>>  -- new text lines by commit id, then path
 ---@field open_file? review.OpenFile    -- file in the diff window
 
@@ -38,7 +39,8 @@ function M.initial(config)
     marks = {},
     comments = {},
     folds = {},
-    fold_default = folds.PENDING,
+    fold_default = folds.INITIAL,
+    marks_loaded = false,
     contents = {},
   }
 end

@@ -57,13 +57,42 @@ local function missing_diffs(state, built)
   end, missing)
 end
 
+--- Cache entries of commits in the stack only. Other entries are dropped.
+---@generic T
+---@param cache table<string, T>
+---@param built review.StackOk
+---@return table<string, T>
+local function keep_stack_commits(cache, built)
+  local out = {}
+  for _, rev in ipairs(built.revisions) do
+    out[rev.commit_id] = cache[rev.commit_id]
+  end
+  return out
+end
+
+--- State with the new stack. An ok stack drops cache entries of other commits.
+---@param state review.State
+---@param built review.Stack
+---@return review.State
+local function with_stack(state, built)
+  local next_state = tbl.with(state, { stack = built, fold_default = folds.on_new_stack(state.fold_default) })
+  if built.type ~= "ok" then
+    return next_state
+  end
+  return tbl.with(next_state, {
+    diffs = keep_stack_commits(state.diffs, built),
+    contents = keep_stack_commits(state.contents, built),
+  })
+end
+
 ---@param state review.State
 ---@param msg review.Msg.StackLoaded
 ---@return review.State, review.Effect[]
 function M.StackLoaded(state, msg)
   local built = stack.build(msg.revisions)
+  local next_state = with_stack(state, built)
   local effects = vim.list_extend({ effect.render_explorer() }, missing_diffs(state, built))
-  return tbl.with(state, { stack = built, fold_default = folds.PENDING }), effects
+  return tbl.with(next_state, { fold_default = folds.update_default(next_state) }), effects
 end
 
 ---@param state review.State
@@ -72,14 +101,16 @@ end
 function M.DiffLoaded(state, msg)
   local diffs = tbl.with(state.diffs, { [msg.commit_id] = vim.tbl_map(keys.annotate, msg.files) })
   local next_state = tbl.with(state, { diffs = diffs })
-  local default = state.fold_default.ready and state.fold_default or folds.default_for(next_state)
-  return tbl.with(next_state, { fold_default = default }), { effect.render_explorer() }
+  return tbl.with(next_state, { fold_default = folds.update_default(next_state) }), { effect.render_explorer() }
 end
 
 ---@param state review.State
 ---@param msg review.Msg.JjFailed
 ---@return review.State, review.Effect[]
 function M.JjFailed(state, msg)
+  if state.stack.type == "ok" then
+    return state, { effect.notify("warn", "jj failed, the stack is not updated: " .. vim.trim(msg.stderr)) }
+  end
   return tbl.with(state, { stack = stack.jj_failed(msg.stderr) }), { effect.render_explorer() }
 end
 

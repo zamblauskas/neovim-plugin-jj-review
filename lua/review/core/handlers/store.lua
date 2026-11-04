@@ -10,8 +10,8 @@ local M = {}
 ---@param msg review.Msg.StoreLoaded
 ---@return review.State, review.Effect[]
 function M.StoreLoaded(state, msg)
-  local next_state = tbl.with(state, { marks = msg.marks })
-  return tbl.with(next_state, { fold_default = folds.default_for(next_state) }),
+  local next_state = tbl.with(state, { marks = msg.marks, marks_loaded = true })
+  return tbl.with(next_state, { fold_default = folds.update_default(next_state) }),
     { effect.render_explorer(), effect.render_diff() }
 end
 
