@@ -1,0 +1,65 @@
+diff --git a/add.txt b/add.txt
+new file mode 100755
+index 0000000000..3e757656cf
+--- /dev/null
++++ b/add.txt
+@@ -0,0 +1,1 @@
++new
+diff --git a/b.bin b/b.bin
+index 88768efdf7..3e3315e1b0 100644
+Binary files a/b.bin and b/b.bin differ
+diff --git a/del.txt b/del.txt
+deleted file mode 100644
+index 587be6b4c3..0000000000
+--- a/del.txt
++++ /dev/null
+@@ -1,1 +0,0 @@
+-x
+diff --git a/empty.txt b/empty.txt
+index 2fa992c0b8..e69de29bb2 100644
+--- a/empty.txt
++++ b/empty.txt
+@@ -1,1 +0,0 @@
+-keep
+diff --git a/mod.txt b/mod.txt
+index f9d9a0195c..e00739d5ed 100644
+--- a/mod.txt
++++ b/mod.txt
+@@ -1,7 +1,8 @@
+ a
+-b
++B
+ c
+ d
+ e
+ f
+-g
++G
++h
+diff --git a/ren.txt b/moved.txt
+rename from ren.txt
+rename to moved.txt
+index 74c047b102..50fda4fa77 100644
+--- a/ren.txt
++++ b/moved.txt
+@@ -1,3 +1,3 @@
+ r1
+ r2
+-r3
++r3x
+diff --git a/newempty.txt b/newempty.txt
+new file mode 100644
+index 0000000000..e69de29bb2
+diff --git a/nonl.txt b/nonl.txt
+index 1a9d148bf9..7adf2e50d9 100644
+--- a/nonl.txt
++++ b/nonl.txt
+@@ -1,1 +1,1 @@
+-nonl
+\ No newline at end of file
++nonl2
+\ No newline at end of file
+diff --git a/ws.txt b/ws.txt
+index aa2c32af38..02f5508497 100644
+--- a/ws.txt
++++ b/ws.txt

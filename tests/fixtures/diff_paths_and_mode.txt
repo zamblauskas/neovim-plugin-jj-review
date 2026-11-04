@@ -1,0 +1,28 @@
+diff --git a/mod.txt b/mod.txt
+old mode 100644
+new mode 100755
+diff --git a/nb.bin b/nb.bin
+new file mode 100644
+index 0000000000..f76dd238ad
+Binary files /dev/null and b/nb.bin differ
+diff --git a/q"t.txt b/q"t.txt
+new file mode 100644
+index 0000000000..bb5d5c1173
+--- /dev/null
++++ b/q"t.txt
+@@ -0,0 +1,1 @@
++"q"
+diff --git a/sp ace b.txt b/sp ace b.txt
+new file mode 100644
+index 0000000000..bca70f3531
+--- /dev/null
++++ b/sp ace b.txt
+@@ -0,0 +1,1 @@
++q
+diff --git a/ünï.txt b/ünï.txt
+new file mode 100644
+index 0000000000..be761e039d
+--- /dev/null
++++ b/ünï.txt
+@@ -0,0 +1,1 @@
++ü
