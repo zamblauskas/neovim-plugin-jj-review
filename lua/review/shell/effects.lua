@@ -190,7 +190,7 @@ end
 
 ---@param ports review.Ports
 ---@return table<string, fun(effect: review.Effect, app: review.App)>
-local function ui_handlers(ports)
+local function tab_handlers(ports)
   return {
     OpenTab = function(_, app)
       ports.layout.open(app)
@@ -199,15 +199,25 @@ local function ui_handlers(ports)
       ports.layout.close()
       ports.diff.close()
     end,
+    RenderExplorer = schedule.once_per_tick(function(_, app)
+      ports.explorer.render(app.state())
+    end),
+  }
+end
+
+---@param ports review.Ports
+---@return table<string, fun(effect: review.Effect, app: review.App)>
+local function diff_handlers(ports)
+  return {
     OpenBuffer = function(e, app)
       ports.diff.open(e, app)
+    end,
+    CloseDiff = function()
+      ports.diff.close_file()
     end,
     MoveCursor = function(e)
       vim.api.nvim_win_set_cursor(0, { e.line, 0 })
     end,
-    RenderExplorer = schedule.once_per_tick(function(_, app)
-      ports.explorer.render(app.state())
-    end),
     RenderDiff = schedule.once_per_tick(function(_, app)
       ports.diff.render(app.state())
     end),
@@ -228,7 +238,8 @@ function M.new(ports, opts)
     revision_handlers(ports, opts or { max_parallel_jj = 4 }),
     store_handlers(ports),
     watcher_handlers(ports),
-    ui_handlers(ports)
+    tab_handlers(ports),
+    diff_handlers(ports)
   )
   return function(effect, app)
     handlers[effect.type](effect, app)

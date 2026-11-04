@@ -57,17 +57,55 @@ local function set_lines(buf, lines)
   vim.bo[buf].modifiable = false
 end
 
---- Show the file in the diff window and focus it, cursor at `cursor_line`.
+--- View of `win` if it shows `buf`, else nil.
+---@param win integer
+---@param buf integer
+---@return vim.fn.winsaveview.ret?
+local function saved_view(win, buf)
+  if vim.api.nvim_win_get_buf(win) ~= buf then
+    return nil
+  end
+  return vim.api.nvim_win_call(win, vim.fn.winsaveview)
+end
+
+---@param win integer
+---@param saved vim.fn.winsaveview.ret
+---@param line_count integer
+local function restore_view(win, saved, line_count)
+  saved.lnum = math.min(saved.lnum, line_count)
+  saved.topline = math.min(saved.topline, line_count)
+  vim.api.nvim_win_call(win, function()
+    vim.fn.winrestview(saved)
+  end)
+end
+
+--- Show the file in the diff window.
+--- New file: focus the window, cursor at `cursor_line`. `keep_view`: keep cursor, scroll and focus.
 ---@param e review.Effect.OpenBuffer
 ---@param app review.App
 function M.open(e, app)
   local buf = buffer_for(e, app)
-  set_lines(buf, e.lines)
   local win = layout.diff_window(buf)
+  local saved = e.keep_view and saved_view(win, buf) or nil
+  set_lines(buf, e.lines)
   vim.api.nvim_win_set_buf(win, buf)
   vim.wo[win][0].signcolumn = "yes:1"
+  if saved then
+    return restore_view(win, saved, #e.lines)
+  end
   vim.api.nvim_set_current_win(win)
   vim.api.nvim_win_set_cursor(win, { math.min(e.cursor_line, #e.lines), 0 })
+end
+
+--- The open file is gone: an empty buffer in the diff window, then wipe all review buffers.
+function M.close_file()
+  local win = layout.handles().diff_win
+  if win and vim.api.nvim_win_is_valid(win) then
+    local empty = vim.api.nvim_create_buf(false, true)
+    vim.bo[empty].bufhidden = "wipe"
+    vim.api.nvim_win_set_buf(win, empty)
+  end
+  M.close()
 end
 
 --- Show virtual lines above line 1 when the window shows the top of the buffer.

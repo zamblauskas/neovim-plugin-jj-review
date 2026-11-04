@@ -3,6 +3,7 @@
 local effect = require("review.core.effect")
 local folds = require("review.core.folds")
 local keys = require("review.core.keys")
+local open_file = require("review.core.open_file")
 local stack = require("review.core.stack")
 local tbl = require("review.lib.tbl")
 
@@ -85,6 +86,15 @@ local function with_stack(state, built)
   })
 end
 
+--- Let the open file follow the new state. Its effects come after `effects`.
+---@param state review.State
+---@param effects review.Effect[]
+---@return review.State, review.Effect[]
+local function with_followed(state, effects)
+  local next_state, follow_effects = open_file.follow(state)
+  return next_state, vim.list_extend(effects, follow_effects)
+end
+
 ---@param state review.State
 ---@param msg review.Msg.StackLoaded
 ---@return review.State, review.Effect[]
@@ -92,7 +102,7 @@ function M.StackLoaded(state, msg)
   local built = stack.build(msg.revisions)
   local next_state = with_stack(state, built)
   local effects = vim.list_extend({ effect.render_explorer() }, missing_diffs(state, built))
-  return tbl.with(next_state, { fold_default = folds.update_default(next_state) }), effects
+  return with_followed(tbl.with(next_state, { fold_default = folds.update_default(next_state) }), effects)
 end
 
 ---@param state review.State
@@ -101,7 +111,10 @@ end
 function M.DiffLoaded(state, msg)
   local diffs = tbl.with(state.diffs, { [msg.commit_id] = vim.tbl_map(keys.annotate, msg.files) })
   local next_state = tbl.with(state, { diffs = diffs })
-  return tbl.with(next_state, { fold_default = folds.update_default(next_state) }), { effect.render_explorer() }
+  return with_followed(
+    tbl.with(next_state, { fold_default = folds.update_default(next_state) }),
+    { effect.render_explorer() }
+  )
 end
 
 ---@param state review.State

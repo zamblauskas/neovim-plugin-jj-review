@@ -17,6 +17,7 @@ local M = {}
 ---| review.Effect.MoveCursor
 ---| review.Effect.StartWatcher
 ---| review.Effect.StopWatcher
+---| review.Effect.CloseDiff
 ---| review.Effect.OpenTab
 ---| review.Effect.CloseTab
 ---| review.Effect.RenderExplorer
@@ -57,6 +58,7 @@ local M = {}
 ---@field path string
 ---@field lines string[]
 ---@field cursor_line integer  -- 1-based; the shell clamps it to the buffer
+---@field keep_view boolean     -- the buffer shows an older commit of the file: keep cursor and scroll
 
 --- Draw the diff of the open file (`state.open_file`) on its buffer.
 ---@class review.Effect.RenderDiff
@@ -97,6 +99,10 @@ local M = {}
 
 ---@class review.Effect.StopWatcher
 ---@field type "StopWatcher"
+
+--- The open file is gone: the diff window shows an empty buffer; review buffers are wiped.
+---@class review.Effect.CloseDiff
+---@field type "CloseDiff"
 
 ---@class review.Effect.OpenTab
 ---@field type "OpenTab"
@@ -148,8 +154,20 @@ function M.load_content(generation, root, commit_id, path)
 end
 
 ---@return review.Effect.OpenBuffer
-function M.open_buffer(change_id, path, lines, cursor_line)
-  return { type = "OpenBuffer", change_id = change_id, path = path, lines = lines, cursor_line = cursor_line }
+function M.open_buffer(change_id, path, lines, cursor_line, keep_view)
+  return {
+    type = "OpenBuffer",
+    change_id = change_id,
+    path = path,
+    lines = lines,
+    cursor_line = cursor_line,
+    keep_view = keep_view or false,
+  }
+end
+
+---@return review.Effect.CloseDiff
+function M.close_diff()
+  return { type = "CloseDiff" }
 end
 
 ---@return review.Effect.RenderDiff

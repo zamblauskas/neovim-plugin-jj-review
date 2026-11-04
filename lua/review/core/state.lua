@@ -25,6 +25,7 @@ local M = {}
 ---@class review.OpenFile
 ---@field change_id string
 ---@field path string
+---@field commit_id? string  -- commit whose text the buffer shows; nil until the first OpenBuffer
 
 ---@param config review.Config
 ---@return review.State

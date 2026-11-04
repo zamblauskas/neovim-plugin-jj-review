@@ -108,6 +108,66 @@ describe("core.update", function()
     assert.are.equal(state.fold_default, again.fold_default)
   end)
 
+  describe("open file after a refresh", function()
+    local added = {
+      status = "added",
+      path = "a.txt",
+      binary = false,
+      hunks = { { old_start = 0, old_count = 0, new_start = 1, new_count = 1, lines = { { kind = "+", text = "x" } } } },
+    }
+
+    --- Revision "b" (commit "b1") with a.txt open and shown.
+    ---@return review.State
+    local function showing()
+      local b1 = vim.tbl_extend("force", rev("b", { "a" }), { commit_id = "b1" })
+      local state = update(opened_state(), msg.root_resolved(1, "/repo"))
+      state = update(state, msg.stack_loaded(1, { b1, rev("a", {}) }))
+      state = update(state, msg.diff_loaded(1, "b1", { added }))
+      state = update(state, msg.diff_loaded(1, "a", {}))
+      state = update(state, msg.file_opened("b", "a.txt"))
+      return (update(state, msg.content_loaded(1, "b1", "a.txt", { "x" })))
+    end
+
+    ---@return review.Revision
+    local function rewritten()
+      return vim.tbl_extend("force", rev("b", { "a" }), { commit_id = "b2" })
+    end
+
+    it("shows the new commit of the file and keeps the view", function()
+      local state = update(showing(), msg.stack_loaded(1, { rewritten(), rev("a", {}) }))
+      state = update(state, msg.diff_loaded(1, "b2", { added }))
+      local next_state, effects = update(state, msg.content_loaded(1, "b2", "a.txt", { "y" }))
+      assert.are.same("b2", next_state.open_file.commit_id)
+      assert.are.same({ effect.open_buffer("b", "a.txt", { "y" }, 1, true), effect.render_diff() }, effects)
+    end)
+
+    it("waits for the new diff", function()
+      local state, effects = update(showing(), msg.stack_loaded(1, { rewritten(), rev("a", {}) }))
+      assert.are.same("b1", state.open_file.commit_id)
+      assert.are.same({ "RenderExplorer", "LoadDiff" }, types(effects))
+    end)
+
+    it("closes the diff when the revision is gone", function()
+      local state, effects = update(showing(), msg.stack_loaded(1, { rev("a", {}) }))
+      assert.is_nil(state.open_file)
+      assert.are.same({ "RenderExplorer", "CloseDiff", "RenderExplorer" }, types(effects))
+    end)
+
+    it("closes the diff when the file is gone from the revision", function()
+      local state = update(showing(), msg.stack_loaded(1, { rewritten(), rev("a", {}) }))
+      local next_state, effects = update(state, msg.diff_loaded(1, "b2", {}))
+      assert.is_nil(next_state.open_file)
+      assert.are.same({ "RenderExplorer", "CloseDiff", "RenderExplorer" }, types(effects))
+    end)
+
+    it("keeps the diff while the stack is not linear", function()
+      local c = vim.tbl_extend("force", rev("c", { "a" }), {})
+      local state = update(showing(), msg.stack_loaded(1, { rewritten(), c, rev("a", {}) }))
+      assert.are.same("error", state.stack.type)
+      assert.are.same("b1", state.open_file.commit_id)
+    end)
+  end)
+
   describe("refresh", function()
     ---@return review.State
     local function loaded()
@@ -210,7 +270,7 @@ describe("core.update", function()
     it("steps to the next and previous file in explorer order", function()
       local state = update(loaded_state(), msg.file_opened("b", "a.txt"))
       local next_state, effects = update(state, msg.file_stepped(1))
-      assert.are.same({ change_id = "b", path = "d.txt" }, next_state.open_file)
+      assert.are.same({ change_id = "b", path = "d.txt", commit_id = "b" }, next_state.open_file)
       assert.are.same({ "OpenBuffer", "RenderDiff" }, types(effects))
       assert.are.same("a.txt", update(next_state, msg.file_stepped(-1)).open_file.path)
     end)
