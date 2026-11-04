@@ -1,6 +1,7 @@
 -- Buffer-local keymaps of a diff buffer → messages. A key set to false in the config is not mapped.
 
 local clock = require("review.shell.clock")
+local keymap_docs = require("review.core.keymap_docs")
 local msg = require("review.core.msg")
 
 local M = {}
@@ -8,19 +9,6 @@ local M = {}
 ---@class review.BufferFile
 ---@field change_id string
 ---@field path string
-
-local DESCRIPTIONS = {
-  toggle = "Toggle reviewed: line",
-  toggle_block = "Toggle reviewed: removed block",
-  toggle_file = "Toggle reviewed: file",
-  comment = "Comment: line",
-  comment_block = "Comment: removed block",
-  delete_comment = "Delete comment at the line",
-  next_unreviewed = "Next unreviewed change",
-  prev_unreviewed = "Previous unreviewed change",
-  next_file = "Next file",
-  prev_file = "Previous file",
-}
 
 ---@param file review.BufferFile
 ---@param fields table
@@ -124,7 +112,7 @@ local function map_all(buf, mode, actions, app)
     if keymaps[name] then
       vim.keymap.set(mode, keymaps[name], function()
         app.dispatch(action())
-      end, { buffer = buf, desc = DESCRIPTIONS[name] })
+      end, { buffer = buf, desc = keymap_docs.describe("Diff buffer", name) })
       table.insert(mapped, { mode, keymaps[name] })
     end
   end

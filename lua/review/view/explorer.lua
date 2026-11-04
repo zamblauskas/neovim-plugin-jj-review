@@ -1,27 +1,14 @@
 -- Explorer view: state → lines and highlights. Pure.
--- A row is a list of chunks { text, hl_group? }. `render` joins chunks and computes byte ranges.
+-- Rows are lists of chunks (view/rows.lua).
 
 local comments = require("review.core.comments")
 local counts = require("review.core.counts")
 local file_tree = require("review.core.file_tree")
 local folds = require("review.core.folds")
+local row_lib = require("review.view.rows")
 local text_lib = require("review.lib.text")
 
 local M = {}
-
----@alias review.Chunk { [1]: string, [2]: string? }
----@alias review.Row review.Chunk[]
-
----@class review.Highlight
----@field row integer       -- 0-based
----@field col_start integer -- byte
----@field col_end integer   -- byte, exclusive
----@field group string
-
----@class review.View
----@field lines string[]
----@field highlights review.Highlight[]
----@field targets? table<integer, review.ExplorerTarget>  -- by 1-based line
 
 ---@class review.ExplorerEntry
 ---@field chunks review.Row
@@ -289,20 +276,6 @@ local function body_entries(ctx)
   return vim.list_extend(revision_entries(ctx, stack.revisions), orphan_entries(ctx.placements, ctx.state.config.icons))
 end
 
----@param row review.Row
----@param index integer 0-based row
----@return string, review.Highlight[]
-local function flatten(row, index)
-  local text, highlights = "", {}
-  for _, chunk in ipairs(row) do
-    if chunk[2] then
-      table.insert(highlights, { row = index, col_start = #text, col_end = #text + #chunk[1], group = chunk[2] })
-    end
-    text = text .. chunk[1]
-  end
-  return text, highlights
-end
-
 ---@param chunks review.Chunk[]
 ---@return string
 local function chunks_text(chunks)
@@ -350,7 +323,7 @@ function M.render(state)
   local entries = vim.list_extend(header_entries(state), body_entries(ctx))
   local view = { lines = {}, highlights = {}, targets = {} }
   for i, entry in ipairs(entries) do
-    local text, highlights = flatten(fit(entry, state.config.explorer_width), i - 1)
+    local text, highlights = row_lib.flatten(fit(entry, state.config.explorer_width), i - 1)
     table.insert(view.lines, text)
     vim.list_extend(view.highlights, highlights)
     view.targets[i] = entry.target

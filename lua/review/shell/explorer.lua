@@ -3,6 +3,8 @@
 local actions = require("review.core.explorer_actions")
 local apply = require("review.shell.apply")
 local clock = require("review.shell.clock")
+local help = require("review.shell.help")
+local keymap_docs = require("review.core.keymap_docs")
 local explorer_cursor = require("review.core.explorer_cursor")
 local msg = require("review.core.msg")
 local view = require("review.view.explorer")
@@ -47,42 +49,46 @@ local function set_window_options(win)
   wo.foldcolumn, wo.spell, wo.list = "0", false, false
 end
 
---- Row actions by config key name.
+--- Row actions by config key name: the row target → message.
+---@type table<string, fun(target: review.ExplorerTarget): review.Msg?>
 local ROW_ACTIONS = {
-  toggle_file = {
-    function(target)
-      return actions.toggle_file(target, clock.now())
-    end,
-    "Toggle reviewed: file",
-  },
-  delete_comment = { actions.delete_comment, "Delete orphaned comment" },
-  edit = { actions.edit, "Make the revision the working copy (jj edit)" },
+  enter = actions.enter,
+  toggle_file = function(target)
+    return actions.toggle_file(target, clock.now())
+  end,
+  edit = actions.edit,
+  delete_comment = actions.delete_comment,
 }
 
----@param buf integer
+--- All explorer keys by config key name.
 ---@param app review.App
-local function set_row_keymaps(buf, app)
-  local keymaps = app.state().config.keymaps
-  for name, row_action in pairs(ROW_ACTIONS) do
-    if keymaps[name] then
-      vim.keymap.set("n", keymaps[name], function()
-        on_cursor_row(app, row_action[1])
-      end, { buffer = buf, desc = row_action[2] })
+---@return table<string, fun()>
+local function explorer_keys(app)
+  local keys = {
+    help = function()
+      help.open(app.state().config.keymaps)
+    end,
+    quit = function()
+      app.dispatch(msg.closed())
+    end,
+  }
+  for name, action in pairs(ROW_ACTIONS) do
+    keys[name] = function()
+      on_cursor_row(app, action)
     end
   end
+  return keys
 end
 
---- `q` closes the review. `<CR>` runs the enter action of the row. The toggle key toggles a file row.
 ---@param buf integer
 ---@param app review.App
 local function set_keymaps(buf, app)
-  vim.keymap.set("n", "q", function()
-    app.dispatch(msg.closed())
-  end, { buffer = buf, desc = "Close review" })
-  vim.keymap.set("n", "<CR>", function()
-    on_cursor_row(app, actions.enter)
-  end, { buffer = buf, desc = "Fold revision / open file" })
-  set_row_keymaps(buf, app)
+  local keymaps = app.state().config.keymaps
+  for name, fn in pairs(explorer_keys(app)) do
+    if keymaps[name] then
+      vim.keymap.set("n", keymaps[name], fn, { buffer = buf, desc = keymap_docs.describe("Explorer", name) })
+    end
+  end
 end
 
 --- Keymaps. Closing the window (`:q`) closes the review too.

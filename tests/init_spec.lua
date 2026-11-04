@@ -126,7 +126,7 @@ describe("review (end to end)", function()
     local buf = vim.api.nvim_get_current_buf()
     review.close()
     local has_review_key = vim.iter(vim.api.nvim_buf_get_keymap(buf, "n")):any(function(m)
-      return m.desc == "Toggle reviewed: line"
+      return m.desc == "Toggle reviewed: line, or visual range"
     end)
     assert.is_false(has_review_key)
     assert.is_true(vim.api.nvim_buf_is_valid(buf))
