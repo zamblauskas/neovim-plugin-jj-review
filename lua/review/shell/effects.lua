@@ -13,6 +13,7 @@ local M = {}
 ---@field jj table           -- review.shell.jj
 ---@field explorer table     -- review.shell.explorer
 ---@field layout table       -- review.shell.layout
+---@field diff table         -- review.shell.diff
 
 ---@param err string
 local function notify_error(err)
@@ -72,10 +73,31 @@ function M.stack_result(e, result)
   return msg.stack_loaded(e.generation, revisions)
 end
 
+--- Lines of a file content. A final newline does not make an extra empty line.
+---@param text string
+---@return string[]
+local function text_lines(text)
+  local lines = vim.split(text, "\n", { plain = true })
+  if #lines > 1 and lines[#lines] == "" then
+    table.remove(lines)
+  end
+  return lines
+end
+
+--- Message for a `jj file show` result.
+---@param e review.Effect.LoadContent
+---@param result review.JjResult
+---@return review.Msg
+function M.content_result(e, result)
+  if not result.ok then
+    return msg.jj_failed(e.generation, result.stderr)
+  end
+  return msg.content_loaded(e.generation, e.commit_id, e.path, text_lines(result.stdout))
+end
+
 ---@param ports review.Ports
----@param opts review.InterpreterOpts
 ---@return table<string, fun(effect: review.Effect, app: review.App)>
-local function jj_handlers(ports, opts)
+local function repo_handlers(ports)
   return {
     ResolveRoot = jj_effect(function(e)
       return ports.jj.root(e.cwd)
@@ -86,9 +108,20 @@ local function jj_handlers(ports, opts)
     LoadStack = jj_effect(function(e)
       return ports.jj.log(e.root, e.revset, log.TEMPLATE)
     end, M.stack_result),
+  }
+end
+
+---@param ports review.Ports
+---@param opts review.InterpreterOpts
+---@return table<string, fun(effect: review.Effect, app: review.App)>
+local function revision_handlers(ports, opts)
+  return {
     LoadDiff = jj_effect(function(e)
       return ports.jj.diff(e.root, e.commit_id)
     end, M.diff_result, semaphore.new(opts.max_parallel_jj)),
+    LoadContent = jj_effect(function(e)
+      return ports.jj.file_show(e.root, e.commit_id, e.path)
+    end, M.content_result),
   }
 end
 
@@ -101,6 +134,10 @@ local function ui_handlers(ports)
     end,
     CloseTab = function()
       ports.layout.close()
+      ports.diff.close()
+    end,
+    OpenBuffer = function(e)
+      ports.diff.open(e)
     end,
     RenderExplorer = schedule.once_per_tick(function(_, app)
       ports.explorer.render(app.state())
@@ -116,7 +153,12 @@ end
 ---@param opts? review.InterpreterOpts
 ---@return review.Interpreter
 function M.new(ports, opts)
-  local handlers = vim.tbl_extend("error", jj_handlers(ports, opts or { max_parallel_jj = 4 }), ui_handlers(ports))
+  local handlers = vim.tbl_extend(
+    "error",
+    repo_handlers(ports),
+    revision_handlers(ports, opts or { max_parallel_jj = 4 }),
+    ui_handlers(ports)
+  )
   return function(effect, app)
     handlers[effect.type](effect, app)
   end

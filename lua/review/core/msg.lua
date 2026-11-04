@@ -12,6 +12,8 @@ local M = {}
 ---| review.Msg.DiffLoaded
 ---| review.Msg.JjFailed
 ---| review.Msg.FoldToggled
+---| review.Msg.FileOpened
+---| review.Msg.ContentLoaded
 
 ---@class review.Msg.Opened
 ---@field type "Opened"
@@ -50,6 +52,18 @@ local M = {}
 ---@class review.Msg.FoldToggled
 ---@field type "FoldToggled"
 ---@field change_id string
+
+---@class review.Msg.FileOpened
+---@field type "FileOpened"
+---@field change_id string
+---@field path string
+
+---@class review.Msg.ContentLoaded
+---@field type "ContentLoaded"
+---@field generation integer
+---@field commit_id string
+---@field path string
+---@field lines string[]
 
 ---@param cwd string
 ---@param revset string?
@@ -92,6 +106,18 @@ end
 ---@return review.Msg.FoldToggled
 function M.fold_toggled(change_id)
   return { type = "FoldToggled", change_id = change_id }
+end
+
+---@param change_id string
+---@param path string
+---@return review.Msg.FileOpened
+function M.file_opened(change_id, path)
+  return { type = "FileOpened", change_id = change_id, path = path }
+end
+
+---@return review.Msg.ContentLoaded
+function M.content_loaded(generation, commit_id, path, lines)
+  return { type = "ContentLoaded", generation = generation, commit_id = commit_id, path = path, lines = lines }
 end
 
 return M

@@ -47,6 +47,16 @@ describe("jj port", function()
     assert.truthy(result.stdout:find("diff --git a/file.txt b/file.txt", 1, true))
   end)
 
+  it("shows a file whose name has a quote, a backslash and a space", function()
+    local name = 'q"t \\x.txt'
+    vim.fn.writefile({ "content" }, repo .. "/" .. name)
+    helpers.jj(repo, { "util", "snapshot" })
+    local result = helpers.run_async(function()
+      return jj.file_show(repo, "@", name)
+    end)
+    assert.are.same({ true, "content\n" }, { result.ok, result.stdout })
+  end)
+
   it("returns stderr when the command fails", function()
     local result = helpers.run_async(function()
       return jj.log(repo, "no_such_revision", "commit_id")

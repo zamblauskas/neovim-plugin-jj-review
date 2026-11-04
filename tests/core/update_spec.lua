@@ -1,5 +1,6 @@
 local assert = require("luassert")
 local config = require("review.config")
+local effect = require("review.core.effect")
 local list = require("review.lib.list")
 local msg = require("review.core.msg")
 local state_mod = require("review.core.state")
@@ -111,6 +112,61 @@ describe("core.update", function()
     local next_state, effects = update(state, msg.fold_toggled("b"))
     assert.are.same({ b = "open" }, next_state.folds)
     assert.are.same({ "RenderExplorer" }, types(effects))
+  end)
+
+  describe("opening a file", function()
+    local added = {
+      status = "added",
+      path = "a.txt",
+      binary = false,
+      hunks = { { old_start = 0, old_count = 0, new_start = 1, new_count = 1, lines = { { kind = "+", text = "x" } } } },
+    }
+    local deleted = { status = "deleted", path = "d.txt", binary = false, hunks = {} }
+
+    ---@return review.State
+    local function loaded_state()
+      local state = update(opened_state(), msg.root_resolved(1, "/repo"))
+      state = update(state, msg.stack_loaded(1, { rev("b", { "a" }), rev("a", {}) }))
+      return (update(state, msg.diff_loaded(1, "b", { added, deleted })))
+    end
+
+    it("loads the content when it is not in the cache", function()
+      local state, effects = update(loaded_state(), msg.file_opened("b", "a.txt"))
+      assert.are.same({ change_id = "b", path = "a.txt" }, state.open_file)
+      assert.are.same({ effect.load_content(1, "/repo", "b", "a.txt") }, effects)
+    end)
+
+    it("opens the buffer when the content arrives", function()
+      local state = update(loaded_state(), msg.file_opened("b", "a.txt"))
+      local next_state, effects = update(state, msg.content_loaded(1, "b", "a.txt", { "x" }))
+      assert.are.same({ ["a.txt"] = { "x" } }, next_state.contents.b)
+      assert.are.same({ effect.open_buffer("b", "a.txt", { "x" }, 1) }, effects)
+    end)
+
+    it("opens a cached file without loading", function()
+      local state = update(loaded_state(), msg.content_loaded(1, "b", "a.txt", { "x" }))
+      local _, effects = update(state, msg.file_opened("b", "a.txt"))
+      assert.are.same({ "OpenBuffer" }, types(effects))
+    end)
+
+    it("only caches content of a file that is not open any more", function()
+      local state = update(loaded_state(), msg.file_opened("b", "d.txt"))
+      local next_state, effects = update(state, msg.content_loaded(1, "b", "a.txt", { "x" }))
+      assert.are.same({ "x" }, next_state.contents.b["a.txt"])
+      assert.are.same({}, effects)
+    end)
+
+    it("opens a deleted file with one empty line, without loading", function()
+      local _, effects = update(loaded_state(), msg.file_opened("b", "d.txt"))
+      assert.are.same({ effect.open_buffer("b", "d.txt", { "" }, 1) }, effects)
+    end)
+
+    it("ignores an unknown file", function()
+      local state = loaded_state()
+      local next_state, effects = update(state, msg.file_opened("b", "nope"))
+      assert.are.equal(state, next_state)
+      assert.are.same({}, effects)
+    end)
   end)
 
   it("drops results of an older open", function()

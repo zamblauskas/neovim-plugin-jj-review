@@ -77,4 +77,20 @@ function M.diff(root, commit_id)
   return M.run(root, { "diff", "-r", commit_id, "--git", "-w", "--context", "2" })
 end
 
+--- Literal root-relative path as a fileset. A bare path is parsed as a fileset expression and fails on `"`.
+---@param path string
+---@return string
+local function root_file(path)
+  return 'root-file:"' .. path:gsub("\\", "\\\\"):gsub('"', '\\"') .. '"'
+end
+
+--- Content of a file in a revision.
+---@param root string
+---@param commit_id string
+---@param path string  root-relative
+---@return review.JjResult
+function M.file_show(root, commit_id, path)
+  return M.run(root, { "file", "show", "-r", commit_id, "--", root_file(path) })
+end
+
 return M

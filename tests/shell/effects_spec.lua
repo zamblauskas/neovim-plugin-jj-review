@@ -80,6 +80,13 @@ describe("shell.effects", function()
     assert.are.same("JjFailed", result.type)
   end)
 
+  it("splits file content into lines without a final empty line", function()
+    local e = effect.load_content(1, "/repo", "c", "f")
+    assert.are.same({ "a", "b" }, effects.content_result(e, ok("a\nb\n")).lines)
+    assert.are.same({ "a", "b" }, effects.content_result(e, ok("a\nb")).lines)
+    assert.are.same({ "" }, effects.content_result(e, ok("")).lines)
+  end)
+
   it("batches renders in one tick", function()
     local ports = fake_ports()
     local interpret = effects.new(ports)

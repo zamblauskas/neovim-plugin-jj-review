@@ -15,14 +15,14 @@ local M = {}
 ---@field change_id string
 ---@field path string
 
---- `<CR>`: fold / unfold a revision. File rows: no action yet.
+--- `<CR>`: fold / unfold a revision, open a file.
 ---@param target review.ExplorerTarget
----@return review.Msg?
+---@return review.Msg
 function M.enter(target)
   if target.type == "revision" then
     return msg.fold_toggled(target.change_id)
   end
-  return nil
+  return msg.file_opened(target.change_id, target.path)
 end
 
 return M

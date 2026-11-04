@@ -7,6 +7,8 @@ local M = {}
 ---| review.Effect.CheckOp
 ---| review.Effect.LoadStack
 ---| review.Effect.LoadDiff
+---| review.Effect.LoadContent
+---| review.Effect.OpenBuffer
 ---| review.Effect.OpenTab
 ---| review.Effect.CloseTab
 ---| review.Effect.RenderExplorer
@@ -32,6 +34,21 @@ local M = {}
 ---@field generation integer
 ---@field root string
 ---@field commit_id string
+
+---@class review.Effect.LoadContent
+---@field type "LoadContent"
+---@field generation integer
+---@field root string
+---@field commit_id string
+---@field path string
+
+--- Show a file of a revision in the diff window (view mode: read-only scratch buffer).
+---@class review.Effect.OpenBuffer
+---@field type "OpenBuffer"
+---@field change_id string
+---@field path string
+---@field lines string[]
+---@field cursor_line integer  -- 1-based; the shell clamps it to the buffer
 
 ---@class review.Effect.OpenTab
 ---@field type "OpenTab"
@@ -75,6 +92,16 @@ end
 ---@return review.Effect.RenderExplorer
 function M.render_explorer()
   return { type = "RenderExplorer" }
+end
+
+---@return review.Effect.LoadContent
+function M.load_content(generation, root, commit_id, path)
+  return { type = "LoadContent", generation = generation, root = root, commit_id = commit_id, path = path }
+end
+
+---@return review.Effect.OpenBuffer
+function M.open_buffer(change_id, path, lines, cursor_line)
+  return { type = "OpenBuffer", change_id = change_id, path = path, lines = lines, cursor_line = cursor_line }
 end
 
 return M
