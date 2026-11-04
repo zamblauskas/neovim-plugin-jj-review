@@ -16,7 +16,11 @@ local app
 ---@param config review.Config
 ---@return review.App
 local function create_app(config)
-  local ports = { jj = require("review.shell.jj"), explorer = require("review.shell.explorer") }
+  local ports = {
+    jj = require("review.shell.jj"),
+    explorer = require("review.shell.explorer"),
+    layout = require("review.shell.layout"),
+  }
   return app_mod.create(
     state_mod.initial(config),
     update.update,

@@ -36,9 +36,11 @@ local function fake_ports()
         return ok("diff --git a/" .. commit_id .. ".txt b/" .. commit_id .. ".txt\nnew file mode 100644\n")
       end,
     },
-    explorer = {
+    layout = {
       open = function() end,
       close = function() end,
+    },
+    explorer = {
       render = function(state)
         table.insert(renders, state)
       end,

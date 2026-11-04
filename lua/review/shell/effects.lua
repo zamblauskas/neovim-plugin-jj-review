@@ -12,6 +12,7 @@ local M = {}
 ---@class review.Ports
 ---@field jj table           -- review.shell.jj
 ---@field explorer table     -- review.shell.explorer
+---@field layout table       -- review.shell.layout
 
 ---@param err string
 local function notify_error(err)
@@ -95,11 +96,11 @@ end
 ---@return table<string, fun(effect: review.Effect, app: review.App)>
 local function ui_handlers(ports)
   return {
-    OpenExplorer = function(_, app)
-      ports.explorer.open(app)
+    OpenTab = function(_, app)
+      ports.layout.open(app)
     end,
-    CloseExplorer = function()
-      ports.explorer.close()
+    CloseTab = function()
+      ports.layout.close()
     end,
     RenderExplorer = schedule.once_per_tick(function(_, app)
       ports.explorer.render(app.state())

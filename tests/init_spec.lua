@@ -26,6 +26,7 @@ describe("review (end to end)", function()
 
   after_each(function()
     review.close()
+    vim.cmd("silent! tabonly")
     vim.cmd("silent! only")
     vim.cmd.cd(cwd)
   end)

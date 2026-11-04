@@ -19,13 +19,13 @@ function M.Opened(state, msg)
     revset = msg.revset or state.config.revset,
   })
   return next_state,
-    { effect.open_explorer(), effect.render_explorer(), effect.resolve_root(next_state.generation, msg.cwd) }
+    { effect.open_tab(), effect.render_explorer(), effect.resolve_root(next_state.generation, msg.cwd) }
 end
 
 ---@param state review.State
 ---@return review.State, review.Effect[]
 function M.Closed(state)
-  return tbl.with(state, { open = false }), { effect.close_explorer() }
+  return tbl.with(state, { open = false }), { effect.close_tab() }
 end
 
 return M

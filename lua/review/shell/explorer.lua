@@ -82,7 +82,7 @@ end
 ---@param app review.App
 function M.open(app)
   if is_open() then
-    vim.api.nvim_set_current_win(assert(ui.win, "explorer window"))
+    vim.api.nvim_set_current_win((assert(ui.win, "explorer window")))
     return
   end
   local buf = create_buffer()

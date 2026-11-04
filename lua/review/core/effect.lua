@@ -7,8 +7,8 @@ local M = {}
 ---| review.Effect.CheckOp
 ---| review.Effect.LoadStack
 ---| review.Effect.LoadDiff
----| review.Effect.OpenExplorer
----| review.Effect.CloseExplorer
+---| review.Effect.OpenTab
+---| review.Effect.CloseTab
 ---| review.Effect.RenderExplorer
 
 ---@class review.Effect.ResolveRoot
@@ -33,11 +33,11 @@ local M = {}
 ---@field root string
 ---@field commit_id string
 
----@class review.Effect.OpenExplorer
----@field type "OpenExplorer"
+---@class review.Effect.OpenTab
+---@field type "OpenTab"
 
----@class review.Effect.CloseExplorer
----@field type "CloseExplorer"
+---@class review.Effect.CloseTab
+---@field type "CloseTab"
 
 ---@class review.Effect.RenderExplorer
 ---@field type "RenderExplorer"
@@ -62,14 +62,14 @@ function M.load_diff(generation, root, commit_id)
   return { type = "LoadDiff", generation = generation, root = root, commit_id = commit_id }
 end
 
----@return review.Effect.OpenExplorer
-function M.open_explorer()
-  return { type = "OpenExplorer" }
+---@return review.Effect.OpenTab
+function M.open_tab()
+  return { type = "OpenTab" }
 end
 
----@return review.Effect.CloseExplorer
-function M.close_explorer()
-  return { type = "CloseExplorer" }
+---@return review.Effect.CloseTab
+function M.close_tab()
+  return { type = "CloseTab" }
 end
 
 ---@return review.Effect.RenderExplorer
