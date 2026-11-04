@@ -68,6 +68,30 @@ describe("shell.explorer", function()
     assert.are.same({ "FoldToggled" }, app.messages)
   end)
 
+  it("keeps the cursor on its target when rows are added above", function()
+    local function rev(id, parents)
+      return {
+        change_id = id,
+        short_id = id,
+        id_prefix = id,
+        commit_id = id,
+        parents = parents,
+        empty = false,
+        working_copy = false,
+        description = "",
+      }
+    end
+    local stack = { type = "ok", revisions = { rev("bbbb", { "aaaa" }), rev("aaaa", {}) } }
+    local app = fake_app({ stack = stack })
+    explorer.open(app)
+    explorer.render(app.state())
+    vim.api.nvim_win_set_cursor(0, { 5, 0 })
+    local more = tbl.with(stack, { revisions = { rev("cccc", { "bbbb" }), unpack(stack.revisions) } })
+    explorer.render(tbl.with(app.state(), { stack = more }))
+    local line = vim.api.nvim_buf_get_lines(0, vim.fn.line(".") - 1, vim.fn.line("."), false)[1]
+    assert.truthy(line:find("aaaa:"))
+  end)
+
   it("dispatches Closed once when the window is closed by the user", function()
     local app = fake_app()
     explorer.open(app)

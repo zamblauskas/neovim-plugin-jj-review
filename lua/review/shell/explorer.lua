@@ -3,6 +3,7 @@
 local actions = require("review.core.explorer_actions")
 local apply = require("review.shell.apply")
 local clock = require("review.shell.clock")
+local explorer_cursor = require("review.core.explorer_cursor")
 local msg = require("review.core.msg")
 local view = require("review.view.explorer")
 
@@ -120,12 +121,27 @@ function M.close()
   targets = {}
 end
 
+--- Keep the cursor on the same target after a redraw (rule in core/explorer_cursor.lua).
+---@param old_targets review.RowTargets
+local function follow_target(old_targets)
+  if not is_open() then
+    return
+  end
+  local win = assert(ui.win, "explorer window")
+  local row = explorer_cursor.row(old_targets, vim.api.nvim_win_get_cursor(win)[1], targets)
+  if row then
+    vim.api.nvim_win_set_cursor(win, { row, 0 })
+  end
+end
+
 ---@param state review.State
 function M.render(state)
   if ui.buf and vim.api.nvim_buf_is_valid(ui.buf) then
     local rendered = view.render(state)
+    local old_targets = targets
     apply.view(ui.buf, ns, rendered)
     targets = rendered.targets or {}
+    follow_target(old_targets)
   end
 end
 
