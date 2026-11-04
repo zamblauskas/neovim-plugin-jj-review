@@ -12,6 +12,7 @@ local M = {}
 ---| review.Effect.RenderDiff
 ---| review.Effect.LoadStore
 ---| review.Effect.SaveMarks
+---| review.Effect.ClearMarks
 ---| review.Effect.Notify
 ---| review.Effect.MoveCursor
 ---| review.Effect.OpenTab
@@ -70,6 +71,11 @@ local M = {}
 ---@field generation integer
 ---@field root string
 ---@field patch review.MarkPatch
+
+---@class review.Effect.ClearMarks
+---@field type "ClearMarks"
+---@field generation integer
+---@field root string
 
 ---@class review.Effect.Notify
 ---@field type "Notify"
@@ -149,6 +155,11 @@ end
 ---@return review.Effect.SaveMarks
 function M.save_marks(generation, root, patch)
   return { type = "SaveMarks", generation = generation, root = root, patch = patch }
+end
+
+---@return review.Effect.ClearMarks
+function M.clear_marks(generation, root)
+  return { type = "ClearMarks", generation = generation, root = root }
 end
 
 ---@param level "info"|"warn"|"error"

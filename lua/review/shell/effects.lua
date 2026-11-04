@@ -151,6 +151,12 @@ local function store_handlers(ports)
         dispatch_later(app, msg.store_failed(e.generation, "marks.json: " .. tostring(err)))
       end
     end,
+    ClearMarks = function(e, app)
+      local ok, err = ports.store.clear_marks(e.root)
+      if not ok then
+        dispatch_later(app, msg.store_failed(e.generation, "marks.json: " .. tostring(err)))
+      end
+    end,
     Notify = function(e)
       vim.notify("review: " .. e.text, NOTIFY_LEVELS[e.level])
     end,

@@ -6,6 +6,7 @@ local M = {}
 ---@alias review.Msg
 ---| review.Msg.Opened
 ---| review.Msg.Closed
+---| review.Msg.Cleared
 ---| review.Msg.RootResolved
 ---| review.Msg.OpChecked
 ---| review.Msg.StackLoaded
@@ -27,6 +28,10 @@ local M = {}
 
 ---@class review.Msg.Closed
 ---@field type "Closed"
+
+--- Delete all marks in the repo (confirmed by the user).
+---@class review.Msg.Cleared
+---@field type "Cleared"
 
 ---@class review.Msg.RootResolved
 ---@field type "RootResolved"
@@ -108,6 +113,11 @@ end
 ---@return review.Msg.Closed
 function M.closed()
   return { type = "Closed" }
+end
+
+---@return review.Msg.Cleared
+function M.cleared()
+  return { type = "Cleared" }
 end
 
 ---@return review.Msg.RootResolved

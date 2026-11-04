@@ -85,4 +85,16 @@ function M.save_marks(root, patch)
   return write_atomic(path, encode(toggle.apply(marks, patch)))
 end
 
+--- Delete all marks. Errors if the file cannot be read or has an unknown version.
+---@param root string
+---@return boolean, string?
+function M.clear_marks(root)
+  local path = M.marks_path(root)
+  local marks, err = decode(read_file(path))
+  if not marks then
+    return false, err
+  end
+  return write_atomic(path, encode({}))
+end
+
 return M

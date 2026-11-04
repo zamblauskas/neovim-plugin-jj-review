@@ -48,6 +48,9 @@ local function fake_ports()
       save_marks = function()
         return true
       end,
+      clear_marks = function()
+        return true
+      end,
     },
     layout = {
       open = function() end,

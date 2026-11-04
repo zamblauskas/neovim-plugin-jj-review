@@ -32,8 +32,10 @@ end
 
 ---@param args vim.api.keyset.create_user_command.command_args
 local function command(args)
-  if args.fargs[1] == "close" then
-    M.close()
+  local subcommands = { close = M.close, clear = M.clear }
+  local subcommand = subcommands[args.fargs[1]]
+  if subcommand and #args.fargs == 1 then
+    subcommand()
   else
     M.open(args.args ~= "" and args.args or nil)
   end
@@ -55,7 +57,11 @@ function M.setup(opts)
   app = create_app(config)
   highlights.setup()
   vim.api.nvim_create_autocmd("ColorScheme", { callback = highlights.setup })
-  vim.api.nvim_create_user_command("Review", command, { nargs = "*", desc = "Review a jj stack: [revset] | close" })
+  vim.api.nvim_create_user_command(
+    "Review",
+    command,
+    { nargs = "*", desc = "Review a jj stack: [revset] | close | clear" }
+  )
   set_keymaps(config.keymaps)
 end
 
@@ -71,6 +77,17 @@ end
 function M.close()
   if app then
     app.dispatch(msg.closed())
+  end
+end
+
+--- Delete all marks in the repo of the open review, after confirmation.
+function M.clear()
+  if not (app and app.state().open and app.state().root) then
+    vim.notify("review: open a review first (:Review)", vim.log.levels.WARN)
+    return
+  end
+  if vim.fn.confirm("Delete all review marks in this repo?", "&Yes\n&No", 2) == 1 then
+    app.dispatch(msg.cleared())
   end
 end
 

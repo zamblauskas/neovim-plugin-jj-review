@@ -22,4 +22,18 @@ function M.StoreFailed(state, msg)
   return state, { effect.notify("error", msg.error) }
 end
 
+---@param state review.State
+---@return review.State, review.Effect[]
+function M.Cleared(state)
+  if not state.root then
+    return state, {}
+  end
+  return tbl.with(state, { marks = {} }),
+    {
+      effect.clear_marks(state.generation, state.root),
+      effect.render_explorer(),
+      effect.render_diff(),
+    }
+end
+
 return M
