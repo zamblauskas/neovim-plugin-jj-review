@@ -127,6 +127,10 @@ Use LSP and edit code during the review.
 
 Features: F-05 (complete), F-17.
 
+Steps (one revision each): modes in core; real file buffer; snapshot after save and `jj edit`.
+
+Status: done.
+
 ## v0.7 — Finish v0
 
 - `?` help in the explorer.

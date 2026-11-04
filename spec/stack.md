@@ -57,6 +57,13 @@ No refresh loop: all JJ reads by the plugin use `--ignore-working-copy`. They ne
 | Working-copy | Real file buffer | Disk | Yes / Yes |
 
 - The plugin opens the real buffer when the revision content equals the working copy. Example: the revision is `@`, or `@` is empty and the revision is `@-`.
-- A deleted file always uses a scratch buffer.
-- `<leader>re` in the explorer runs `jj edit <rev>`. Then the refresh opens the real buffer.
+- A deleted or binary file always uses a scratch buffer.
+- The review keymaps and marks on a real buffer are removed when the buffer leaves the review (another file opens,
+  or the review closes). The buffer stays open. The plugin never changes its text.
+- A modified real buffer keeps its marks (they move with the text) until it is saved.
+- After a save of any file of the repo while a review is open, the plugin runs `jj util snapshot`. The new
+  operation refreshes the review.
+- When the mode of the open file changes (after `jj edit`), the file opens again in the new mode. The cursor stays.
+- `<leader>re` in the explorer (revision or file row) runs `jj edit <rev>`, then `:checktime`. Then the refresh
+  opens the real buffer. A failure shows a warning.
 - Both modes use the same renderer. It takes: buffer, old text, new text, diff hunks.

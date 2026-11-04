@@ -57,7 +57,8 @@ lua/review/
     toggle.lua          toggle rules → mark patch {set, unset}; apply
     targets.lua         toggle target (line, range, block, file) → keys
     navigation.lua      next / previous unreviewed change
-    open_file.lua       show the open file; follow it after a stack or diff change
+    open_file.lua       show the open file; follow it after a stack or diff change (commit or mode)
+    modes.lua           commit on disk; view or working-copy mode
     explorer_cursor.lua explorer cursor row after a redraw
     comments.lua        comment types, patch, anchor lines, placement: found / outdated / orphaned
     comment_drafts.lua  comment target → anchor, keys, snippet, title
@@ -90,7 +91,8 @@ lua/review/
     apply.lua           apply view specs to buffers (namespaces)
     layout.lua          review tab port (Facade): tab page, diff window
     explorer.lua        explorer window port (only owner of its buffer and window)
-    diff.lua            diff buffer port: review:// scratch buffers, render
+    diff.lua            diff port: shows the open file in the diff window, render
+    buffers.lua         review buffers by mode: scratch (view), real file (working copy)
     diff_keymaps.lua    diff buffer keymaps → messages
     highlights.lua      highlight groups (default links)
     watcher.lua         op_heads watcher + focus autocmds
@@ -123,7 +125,7 @@ See `core/state.lua` (`review.State`). Main fields: `config`, `open`, `generatio
 
 ## Messages
 
-v0.5 adds `CommentRequested{target}`, `CommentSubmitted{draft, text, id, now}`, `CommentDeleteRequested{change_id,
+v0.6 adds `FileSaved{path}`, `EditRequested{change_id}`, `CommandFailed{text}`. v0.5 adds `CommentRequested{target}`, `CommentSubmitted{draft, text, id, now}`, `CommentDeleteRequested{change_id,
 path, line}`, `CommentDeleted{id}`; `StoreLoaded` carries comments. v0.4 adds `RefreshRequested` (watcher or focus → `CheckOp` and `LoadStore`). v0.3 has the lifecycle and JJ messages, `StoreLoaded{marks}`, `StoreFailed{error}`, `ToggleRequested{target, now}`,
 `FoldToggled`, `FileOpened`, `FileStepped`, `UnreviewedStepped{change_id, path, line, offset}`. The rest is the plan.
 A failed `jj diff` or `jj file show` is a `JjFailed` (stack error state). Messages that make marks carry `now`
@@ -149,7 +151,8 @@ v0.3 has `ResolveRoot`, `CheckOp`, `LoadStack`, `LoadDiff`, `LoadContent`, `Load
 | `LoadStack{revset}` | `StackLoaded` or `JjFailed` |
 | `LoadDiff{commit_id}` | `DiffLoaded` or `JjFailed` |
 | `LoadContent{commit_id, path}` | `ContentLoaded` or `JjFailed` |
-| `JjEdit{change_id}` | (watcher sees new operation → `OpChecked`) |
+| `JjEdit{root, change_id}` | (watcher sees new operation → `OpChecked`), or `CommandFailed` |
+| `Snapshot{root}` | (watcher sees new operation → `OpChecked`), or `CommandFailed` |
 | `LoadStore{root}` | `StoreLoaded` or `StoreFailed` |
 | `SaveMarks{root, patch}` / `SaveComments{root, patch}` / `ClearStore{root}` | none, or `StoreFailed` |
 | `OpenCommentInput{title, draft}` | `CommentSubmitted` (on save) |
@@ -158,7 +161,7 @@ v0.3 has `ResolveRoot`, `CheckOp`, `LoadStack`, `LoadDiff`, `LoadContent`, `Load
 | `CloseDiff` | none |
 | `OpenTab` / `CloseTab` | none |
 | `RenderExplorer` / `RenderDiff` | none |
-| `OpenBuffer{change_id, path, lines, cursor_line, keep_view}` (mode added in v0.6) | none |
+| `OpenBuffer{change_id, path, lines, cursor_line, keep_view, mode, file_path}` | none |
 | `Notify{level, text}` | none |
 
 Render is an effect, so `update` decides when to redraw. The shell computes the view from the new state and applies it.
@@ -200,7 +203,8 @@ ids) are fetched again. Old cache entries not in the stack are dropped.
 
 ## JJ calls
 
-All reads use `--ignore-working-copy` (no snapshot, so no new operation, so no refresh loop).
+All reads use `--ignore-working-copy` (no snapshot, so no new operation, so no refresh loop). Only `jj edit` and
+`jj util snapshot` (after a save) run without it.
 
 | Purpose | Command |
 |---|---|
