@@ -125,6 +125,7 @@ function M.render(state)
     marks = state.marks,
     dim = state.config.dim_reviewed,
     comments = file_comments(state),
+    icons = state.config.icons,
   }
   local rendered = view.render(file, input)
   apply.extmarks(buf, buffers.ns, rendered.extmarks)

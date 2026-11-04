@@ -56,18 +56,19 @@ local function count_chunks(count)
   return { { count.reviewed .. "/" .. count.total, group } }
 end
 
---- 💬 when a comment is shown there, ⚠ when one of them is outdated.
+--- Comment icon when a comment is shown there, warning icon when one of them is outdated.
 ---@param placements review.Placement[]
+---@param config review.IconConfig
 ---@return review.Chunk[]
-local function comment_icons(placements)
+local function comment_icons(placements, config)
   local icons = {}
   if #placements > 0 then
-    table.insert(icons, { " 💬", "ReviewComment" })
+    table.insert(icons, { " " .. config.comment, "ReviewComment" })
   end
   if vim.iter(placements):any(function(p)
     return p.status == "outdated"
   end) then
-    table.insert(icons, { " ⚠", "ReviewCommentOutdated" })
+    table.insert(icons, { " " .. config.warning, "ReviewCommentOutdated" })
   end
   return icons
 end
@@ -75,9 +76,10 @@ end
 --- Right part: count and comment icons; nil when empty.
 ---@param count review.Count?
 ---@param placements review.Placement[]
+---@param icons review.IconConfig
 ---@return review.Row?
-local function right_chunks(count, placements)
-  local chunks = vim.list_extend(count_chunks(count) or {}, comment_icons(placements))
+local function right_chunks(count, placements, icons)
+  local chunks = vim.list_extend(count_chunks(count) or {}, comment_icons(placements, icons))
   return #chunks > 0 and chunks or nil
 end
 
@@ -96,20 +98,31 @@ local function placements_at(ctx, change_id, path)
 end
 
 ---@param count review.Count?
+---@param icons review.IconConfig
 ---@return review.Chunk[]
-local function done_icon(count)
-  return (count and counts.is_done(count)) and { { "✅ " } } or {}
+local function done_icon(count, icons)
+  return (count and counts.is_done(count)) and { { icons.reviewed .. " " } } or {}
+end
+
+--- The working-copy icon, or blanks of the same width.
+---@param rev review.Revision
+---@param icons review.IconConfig
+---@return review.Chunk
+local function working_copy_chunk(rev, icons)
+  local icon = rev.working_copy and icons.working_copy or string.rep(" ", text_lib.width(icons.working_copy))
+  return { icon .. " ", "ReviewWorkingCopy" }
 end
 
 ---@param rev review.Revision
 ---@param open boolean
 ---@param count review.Count?
+---@param icons review.IconConfig
 ---@return review.Row
-local function revision_row(rev, open, count)
+local function revision_row(rev, open, count, icons)
   local rest = rev.short_id:sub(#rev.id_prefix + 1)
   local description = rev.description ~= "" and { rev.description } or { "(no description)", "ReviewDim" }
-  return vim.list_extend({ { open and "▾ " or "▸ ", "ReviewFold" }, unpack(done_icon(count)) }, {
-    { rev.working_copy and "◆ " or "  ", "ReviewWorkingCopy" },
+  return vim.list_extend({ { open and "▾ " or "▸ ", "ReviewFold" }, unpack(done_icon(count, icons)) }, {
+    working_copy_chunk(rev, icons),
     { rev.id_prefix, "ReviewChangeId" },
     { rest, "ReviewChangeIdRest" },
     { ": " },
@@ -180,11 +193,11 @@ local function tree_entry(entry, change_id, ctx)
   end
   local file = assert(entry.file, "file entry")
   local status, count = STATUS[file.status], counts.file(file, ctx.state.marks)
-  local chunks = { { indent }, unpack(done_icon(count)) }
+  local chunks = { { indent }, unpack(done_icon(count, ctx.state.config.icons)) }
   vim.list_extend(chunks, { { status[1] .. " ", status[2] }, { entry.name } })
   return {
     chunks = vim.list_extend(chunks, file_suffix(file)),
-    right = right_chunks(count, placements_at(ctx, change_id, file.path)),
+    right = right_chunks(count, placements_at(ctx, change_id, file.path), ctx.state.config.icons),
     target = { type = "file", change_id = change_id, path = file.path },
   }
 end
@@ -213,8 +226,11 @@ local function revision_entries(ctx, revisions)
     local files = state.diffs[rev.commit_id]
     local count = files and counts.files(files, state.marks)
     local target = { type = "revision", change_id = rev.change_id }
-    local right = right_chunks(count, placements_at(ctx, rev.change_id))
-    table.insert(entries, { chunks = revision_row(rev, open, count), right = right, target = target })
+    local right = right_chunks(count, placements_at(ctx, rev.change_id), state.config.icons)
+    table.insert(
+      entries,
+      { chunks = revision_row(rev, open, count, state.config.icons), right = right, target = target }
+    )
     if open then
       vim.list_extend(entries, file_entries(ctx, rev))
     end
@@ -223,21 +239,27 @@ local function revision_entries(ctx, revisions)
 end
 
 ---@param placement review.Placement
+---@param icons review.IconConfig
 ---@return review.ExplorerEntry
-local function orphan_entry(placement)
+local function orphan_entry(placement, icons)
   local c = placement.comment
   local first_line = vim.split(c.text, "\n", { plain = true })[1]
   local where = c.path .. ":" .. c.anchor.start_line
   return {
-    chunks = { { "  ⚠ ", "ReviewCommentOutdated" }, { where .. " " }, { '"' .. first_line .. '"', "ReviewDim" } },
+    chunks = {
+      { "  " .. icons.warning .. " ", "ReviewCommentOutdated" },
+      { where .. " " },
+      { '"' .. first_line .. '"', "ReviewDim" },
+    },
     target = { type = "comment", id = c.id },
   }
 end
 
 --- "Orphaned comments" section. Empty when there are none.
 ---@param placements review.Placement[]
+---@param icons review.IconConfig
 ---@return review.ExplorerEntry[]
-local function orphan_entries(placements)
+local function orphan_entries(placements, icons)
   local orphans = vim.tbl_filter(function(p)
     return p.status == "orphaned"
   end, placements)
@@ -245,7 +267,12 @@ local function orphan_entries(placements)
     return {}
   end
   local header = { { chunks = {} }, { chunks = { { "Orphaned comments (" .. #orphans .. ")", "ReviewHeader" } } } }
-  return vim.list_extend(header, vim.tbl_map(orphan_entry, orphans))
+  return vim.list_extend(
+    header,
+    vim.tbl_map(function(p)
+      return orphan_entry(p, icons)
+    end, orphans)
+  )
 end
 
 ---@param ctx review.ExplorerContext
@@ -259,7 +286,7 @@ local function body_entries(ctx)
   elseif #stack.revisions == 0 then
     return plain({ { { "Nothing to review", "ReviewDim" } } })
   end
-  return vim.list_extend(revision_entries(ctx, stack.revisions), orphan_entries(ctx.placements))
+  return vim.list_extend(revision_entries(ctx, stack.revisions), orphan_entries(ctx.placements, ctx.state.config.icons))
 end
 
 ---@param row review.Row

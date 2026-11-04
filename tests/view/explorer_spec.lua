@@ -206,6 +206,14 @@ describe("view.explorer", function()
     end)
   end)
 
+  it("uses the configured icons, with blanks of the same width", function()
+    local state = state_with({ type = "ok", revisions = { rev("uxlm", "x", true), rev("jrgk", "y") } })
+    local icons = vim.tbl_extend("force", state.config.icons, { working_copy = "WC" })
+    state = tbl.with(state, { config = tbl.with(state.config, { icons = icons }) })
+    local lines = view.render(state).lines
+    assert.are.same({ "▸ WC uxlm: x", "▾    jrgk: y" }, { lines[4], lines[5] })
+  end)
+
   it("shows an empty stack", function()
     local v = view.render(state_with({ type = "ok", revisions = {} }))
     assert.are.same("Nothing to review", v.lines[4])

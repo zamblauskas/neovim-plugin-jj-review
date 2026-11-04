@@ -23,6 +23,7 @@ local PAD_WIDTH = 400
 ---@field marks review.Marks
 ---@field dim boolean           -- dim reviewed lines
 ---@field comments review.Placement[]  -- comments shown in this file
+---@field icons review.IconConfig
 
 ---@param text string
 ---@param tabstop integer
@@ -59,12 +60,13 @@ local function is_reviewed(state)
   return state.total > 0 and state.reviewed == state.total
 end
 
---- Gutter text of a removed block: "✓" when reviewed, "3/4" when partly reviewed, else empty.
+--- Gutter text of a removed block: the mark icon when reviewed, "3/4" when partly reviewed, else empty.
 ---@param state review.SegmentState
+---@param icons review.IconConfig
 ---@return string
-local function block_prefix(state)
+local function block_prefix(state, icons)
   if is_reviewed(state) then
-    return "✓"
+    return icons.mark
   elseif state.reviewed > 0 then
     return state.reviewed .. "/" .. state.total
   end
@@ -105,7 +107,7 @@ local function added_mark(segment, input)
   local reviewed = is_reviewed(segment_state(segment, input.marks))
   local opts = { line_hl_group = line_group(reviewed, input, "ReviewAdded") }
   if reviewed then
-    opts.sign_text, opts.sign_hl_group = "✓", "ReviewSign"
+    opts.sign_text, opts.sign_hl_group = input.icons.mark, "ReviewSign"
   end
   return { row = segment.line - 1, opts = opts }
 end
@@ -119,7 +121,7 @@ local function removed_mark(segment, input)
     return line.text
   end, segment.lines)
   local group = line_group(is_reviewed(state), input, "ReviewRemoved")
-  local virt_lines = removed_virt_lines(texts, block_prefix(state), group, input)
+  local virt_lines = removed_virt_lines(texts, block_prefix(state, input.icons), group, input)
   return {
     row = segment.line - 1,
     opts = { virt_lines = virt_lines, virt_lines_above = segment.above, virt_lines_leftcol = true },
@@ -136,23 +138,29 @@ local function segment_mark(segment, input)
   return removed_mark(segment, input)
 end
 
-local COMMENT_STYLES = {
-  found = { "💬 ", "ReviewComment" },
-  outdated = { "⚠ outdated: ", "ReviewCommentOutdated" },
-}
+--- Prefix and highlight of a comment by its status.
+---@param status "found"|"outdated"|"orphaned"  -- an orphaned comment is not shown in a file
+---@param icons review.IconConfig
+---@return string, string
+local function comment_style(status, icons)
+  if status == "outdated" then
+    return icons.warning .. " outdated: ", "ReviewCommentOutdated"
+  end
+  return icons.comment .. " ", "ReviewComment"
+end
 
 --- Comment as virtual lines below its line. The first line has the prefix; the others are indented to match.
 ---@param placement review.Placement
 ---@param input review.DiffViewInput
 ---@return review.ExtmarkSpec
 local function comment_mark(placement, input)
-  local style = COMMENT_STYLES[placement.status]
-  local indent = string.rep(" ", vim.fn.strdisplaywidth(style[1]))
+  local prefix, group = comment_style(placement.status, input.icons)
+  local indent = string.rep(" ", vim.fn.strdisplaywidth(prefix))
   local gutter = string.rep(" ", input.gutter_width)
   local virt_lines = vim
     .iter(ipairs(vim.split(placement.comment.text, "\n", { plain = true })))
     :map(function(i, text)
-      return { { gutter }, { (i == 1 and style[1] or indent) .. text, style[2] } }
+      return { { gutter }, { (i == 1 and prefix or indent) .. text, group } }
     end)
     :totable()
   local row = math.max(math.min(assert(placement.line, "placed comment"), input.line_count), 1) - 1

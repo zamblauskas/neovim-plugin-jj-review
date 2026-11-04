@@ -1,4 +1,5 @@
 local assert = require("luassert")
+local config = require("review.config")
 local keys = require("review.core.keys")
 local parse = require("review.parse.diff")
 local view = require("review.view.diff")
@@ -28,11 +29,15 @@ end
 ---@param fields? table
 ---@return review.DiffViewInput
 local function input(fields)
-  return vim.tbl_extend(
-    "force",
-    { line_count = 8, tabstop = 4, gutter_width = 3, marks = {}, dim = true, comments = {} },
-    fields or {}
-  )
+  return vim.tbl_extend("force", {
+    line_count = 8,
+    tabstop = 4,
+    gutter_width = 3,
+    marks = {},
+    dim = true,
+    comments = {},
+    icons = config.defaults.icons,
+  }, fields or {})
 end
 
 local INPUT = input()
