@@ -9,6 +9,12 @@ local LINKS = {
   ReviewChangeId = "Special",
   ReviewChangeIdRest = "Comment",
   ReviewWorkingCopy = "DiagnosticOk",
+  ReviewFold = "Comment",
+  ReviewDirectory = "Directory",
+  ReviewStatusAdded = "Added",
+  ReviewStatusModified = "Changed",
+  ReviewStatusDeleted = "Removed",
+  ReviewStatusRenamed = "Special",
 }
 
 function M.setup()

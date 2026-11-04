@@ -36,10 +36,14 @@ describe("view.explorer", function()
   it("shows revisions with the working copy mark", function()
     local stack = { type = "ok", revisions = { rev("uxlm", "final fixes", true), rev("jrgk", "") } }
     local v = view.render(state_with(stack))
-    assert.are.same(
-      { "Stack (2)", "revset: trunk()..@", "", "◆ uxlm: final fixes", "  jrgk: (no description)" },
-      v.lines
-    )
+    assert.are.same({
+      "Stack (2)",
+      "revset: trunk()..@",
+      "",
+      "▸ ◆ uxlm: final fixes",
+      "▾   jrgk: (no description)",
+      "    Loading…",
+    }, v.lines)
   end)
 
   it("highlights the id prefix by byte range", function()
@@ -47,8 +51,50 @@ describe("view.explorer", function()
     local id_hl = vim.tbl_filter(function(h)
       return h.group == "ReviewChangeId"
     end, v.highlights)[1]
-    -- "◆ " is 4 bytes
-    assert.are.same({ row = 3, col_start = 4, col_end = 5, group = "ReviewChangeId" }, id_hl)
+    -- "▾ " and "◆ " are 4 bytes each
+    assert.are.same({ row = 3, col_start = 8, col_end = 9, group = "ReviewChangeId" }, id_hl)
+  end)
+
+  it("shows the file tree of an open revision with status letters", function()
+    local state = state_with({ type = "ok", revisions = { rev("uxlm", "x") } })
+    state = tbl.with(state, {
+      diffs = {
+        uxlm = {
+          { status = "added", path = "src/app/a.ts", binary = false, hunks = {} },
+          { status = "renamed", path = "b.ts", old_path = "old/b.ts", binary = false, hunks = {} },
+          { status = "deleted", path = "c.bin", binary = true, hunks = {} },
+        },
+      },
+    })
+    local v = view.render(state)
+    assert.are.same(
+      { "    src/app/", "      A a.ts", "    R b.ts ← old/b.ts", "    D c.bin (binary)" },
+      vim.list_slice(v.lines, 5)
+    )
+  end)
+
+  it("colors the status letter", function()
+    local state = state_with({ type = "ok", revisions = { rev("uxlm", "x") } })
+    state = tbl.with(state, { diffs = { uxlm = { { status = "added", path = "a", binary = false, hunks = {} } } } })
+    local hl = vim.tbl_filter(function(h)
+      return h.group == "ReviewStatusAdded"
+    end, view.render(state).highlights)
+    assert.are.same({ { row = 4, col_start = 4, col_end = 6, group = "ReviewStatusAdded" } }, hl)
+  end)
+
+  it("hides files of a closed revision", function()
+    local state = state_with({ type = "ok", revisions = { rev("uxlm", "x") } })
+    state = tbl.with(state, { folds = { uxlmfull = "closed" } })
+    assert.are.same(4, #view.render(state).lines)
+  end)
+
+  it("maps rows to revision and file targets", function()
+    local state = state_with({ type = "ok", revisions = { rev("uxlm", "x") } })
+    state = tbl.with(state, { diffs = { uxlm = { { status = "added", path = "d/a", binary = false, hunks = {} } } } })
+    assert.are.same({
+      [4] = { type = "revision", change_id = "uxlmfull" },
+      [6] = { type = "file", change_id = "uxlmfull", path = "d/a" },
+    }, view.render(state).targets)
   end)
 
   it("shows an empty stack", function()

@@ -103,6 +103,16 @@ describe("core.update", function()
     assert.are.same({ type = "error", reason = "jj_failed", detail = "Error: bad revset" }, state.stack)
   end)
 
+  it("toggles a revision fold and renders", function()
+    local state = update(
+      update(opened_state(), msg.root_resolved(1, "/repo")),
+      msg.stack_loaded(1, { rev("b", { "a" }), rev("a", {}) })
+    )
+    local next_state, effects = update(state, msg.fold_toggled("b"))
+    assert.are.same({ b = "open" }, next_state.folds)
+    assert.are.same({ "RenderExplorer" }, types(effects))
+  end)
+
   it("drops results of an older open", function()
     local reopened = update(opened_state(), msg.opened("/repo"))
     local state, effects = update(reopened, msg.root_resolved(1, "/old"))

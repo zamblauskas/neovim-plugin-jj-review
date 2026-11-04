@@ -5,8 +5,10 @@ local state_mod = require("review.core.state")
 local tbl = require("review.lib.tbl")
 
 --- Fake app that records dispatched messages.
-local function fake_app()
+---@param changes? table  state fields
+local function fake_app(changes)
   local state = tbl.with(state_mod.initial(config.resolve({ explorer_width = 30 })), { open = true })
+  state = tbl.with(state, changes or {})
   local app = { messages = {} }
   function app.state()
     return state
@@ -43,6 +45,27 @@ describe("shell.explorer", function()
     explorer.open(app)
     vim.api.nvim_feedkeys("q", "x", false)
     assert.are.same({ "Closed" }, app.messages)
+  end)
+
+  it("dispatches FoldToggled on <CR> on a revision row", function()
+    local rev = {
+      change_id = "abcd",
+      short_id = "abcd",
+      id_prefix = "a",
+      commit_id = "c1",
+      parents = {},
+      empty = false,
+      working_copy = false,
+      description = "",
+    }
+    local app = fake_app({ stack = { type = "ok", revisions = { rev } } })
+    explorer.open(app)
+    explorer.render(app.state())
+    vim.api.nvim_win_set_cursor(0, { 4, 0 })
+    vim.api.nvim_feedkeys(vim.keycode("<CR>"), "x", false)
+    vim.api.nvim_win_set_cursor(0, { 1, 0 })
+    vim.api.nvim_feedkeys(vim.keycode("<CR>"), "x", false)
+    assert.are.same({ "FoldToggled" }, app.messages)
   end)
 
   it("dispatches Closed once when the window is closed by the user", function()

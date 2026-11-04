@@ -1,5 +1,6 @@
 -- Explorer port: the left split window. Holds the only UI handles (buffer, window).
 
+local actions = require("review.core.explorer_actions")
 local apply = require("review.shell.apply")
 local msg = require("review.core.msg")
 local view = require("review.view.explorer")
@@ -10,6 +11,21 @@ local ns = vim.api.nvim_create_namespace("review.explorer")
 
 ---@type { buf: integer?, win: integer? }
 local ui = {}
+
+--- Row targets of the last render, by 1-based line.
+---@type table<integer, review.ExplorerTarget>
+local targets = {}
+
+--- Dispatch the message of `action` for the row under the cursor, if any.
+---@param app review.App
+---@param action fun(target: review.ExplorerTarget): review.Msg?
+local function on_cursor_row(app, action)
+  local target = targets[vim.api.nvim_win_get_cursor(0)[1]]
+  local message = target and action(target)
+  if message then
+    app.dispatch(message)
+  end
+end
 
 ---@return integer
 local function create_buffer()
@@ -29,14 +45,24 @@ local function set_window_options(win)
   wo.foldcolumn, wo.spell, wo.list = "0", false, false
 end
 
---- `q` closes the review. Closing the window (`:q`) closes the review too.
+--- `q` closes the review. `<CR>` runs the enter action of the row.
+---@param buf integer
+---@param app review.App
+local function set_keymaps(buf, app)
+  vim.keymap.set("n", "q", function()
+    app.dispatch(msg.closed())
+  end, { buffer = buf, desc = "Close review" })
+  vim.keymap.set("n", "<CR>", function()
+    on_cursor_row(app, actions.enter)
+  end, { buffer = buf, desc = "Fold revision / open file" })
+end
+
+--- Keymaps. Closing the window (`:q`) closes the review too.
 ---@param buf integer
 ---@param win integer
 ---@param app review.App
 local function bind(buf, win, app)
-  vim.keymap.set("n", "q", function()
-    app.dispatch(msg.closed())
-  end, { buffer = buf, desc = "Close review" })
+  set_keymaps(buf, app)
   vim.api.nvim_create_autocmd("WinClosed", {
     pattern = tostring(win),
     once = true,
@@ -76,12 +102,15 @@ function M.close()
     vim.api.nvim_win_close(assert(ui.win, "explorer window"), true)
   end
   ui = {}
+  targets = {}
 end
 
 ---@param state review.State
 function M.render(state)
   if ui.buf and vim.api.nvim_buf_is_valid(ui.buf) then
-    apply.view(ui.buf, ns, view.render(state))
+    local rendered = view.render(state)
+    apply.view(ui.buf, ns, rendered)
+    targets = rendered.targets or {}
   end
 end
 

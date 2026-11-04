@@ -11,6 +11,7 @@ local M = {}
 ---| review.Msg.StackLoaded
 ---| review.Msg.DiffLoaded
 ---| review.Msg.JjFailed
+---| review.Msg.FoldToggled
 
 ---@class review.Msg.Opened
 ---@field type "Opened"
@@ -45,6 +46,10 @@ local M = {}
 ---@field type "JjFailed"
 ---@field generation integer
 ---@field stderr string
+
+---@class review.Msg.FoldToggled
+---@field type "FoldToggled"
+---@field change_id string
 
 ---@param cwd string
 ---@param revset string?
@@ -81,6 +86,12 @@ end
 ---@return review.Msg.JjFailed
 function M.jj_failed(generation, stderr)
   return { type = "JjFailed", generation = generation, stderr = stderr }
+end
+
+---@param change_id string
+---@return review.Msg.FoldToggled
+function M.fold_toggled(change_id)
+  return { type = "FoldToggled", change_id = change_id }
 end
 
 return M

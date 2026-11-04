@@ -3,8 +3,12 @@
 local M = {}
 
 ---@type table<string, fun(state: review.State, msg: review.Msg): review.State, review.Effect[]>
-local handlers =
-  vim.tbl_extend("error", require("review.core.handlers.lifecycle"), require("review.core.handlers.stack"))
+local handlers = vim.tbl_extend(
+  "error",
+  require("review.core.handlers.lifecycle"),
+  require("review.core.handlers.stack"),
+  require("review.core.handlers.ui")
+)
 
 --- A message is stale when the review is closed, or when it answers an older open.
 ---@param state review.State

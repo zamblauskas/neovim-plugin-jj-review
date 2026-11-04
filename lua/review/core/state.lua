@@ -14,6 +14,7 @@ local M = {}
 ---@field diffs table<string, review.FileDiff[]>  -- by commit id
 ---@field marks table<string, table>   -- by line key (v0.3)
 ---@field comments table[]             -- (v0.5)
+---@field folds review.Folds           -- explorer: user fold choices by change id
 
 ---@param config review.Config
 ---@return review.State
@@ -27,6 +28,7 @@ function M.initial(config)
     diffs = {},
     marks = {},
     comments = {},
+    folds = {},
   }
 end
 
