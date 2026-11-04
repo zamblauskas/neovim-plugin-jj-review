@@ -12,7 +12,7 @@ local M = {}
 ---@field op_id string?
 ---@field stack review.Stack
 ---@field diffs table<string, review.FileDiff[]>  -- by commit id
----@field marks table<string, table>   -- by line key (v0.3)
+---@field marks review.Marks            -- by line key
 ---@field comments table[]             -- (v0.5)
 ---@field folds review.Folds           -- explorer: user fold choices by change id
 ---@field contents table<string, table<string, string[]>>  -- new text lines by commit id, then path
