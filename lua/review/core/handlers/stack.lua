@@ -1,6 +1,7 @@
 -- Handlers: find the repo, watch the operation, load the stack.
 
 local effect = require("review.core.effect")
+local folds = require("review.core.folds")
 local keys = require("review.core.keys")
 local stack = require("review.core.stack")
 local tbl = require("review.lib.tbl")
@@ -49,7 +50,7 @@ end
 function M.StackLoaded(state, msg)
   local built = stack.build(msg.revisions)
   local effects = vim.list_extend({ effect.render_explorer() }, missing_diffs(state, built))
-  return tbl.with(state, { stack = built }), effects
+  return tbl.with(state, { stack = built, fold_default = folds.PENDING }), effects
 end
 
 ---@param state review.State
@@ -57,7 +58,9 @@ end
 ---@return review.State, review.Effect[]
 function M.DiffLoaded(state, msg)
   local diffs = tbl.with(state.diffs, { [msg.commit_id] = vim.tbl_map(keys.annotate, msg.files) })
-  return tbl.with(state, { diffs = diffs }), { effect.render_explorer() }
+  local next_state = tbl.with(state, { diffs = diffs })
+  local default = state.fold_default.ready and state.fold_default or folds.default_for(next_state)
+  return tbl.with(next_state, { fold_default = default }), { effect.render_explorer() }
 end
 
 ---@param state review.State

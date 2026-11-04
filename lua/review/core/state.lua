@@ -1,5 +1,7 @@
 -- Application state. Immutable: every change returns a new table.
 
+local folds = require("review.core.folds")
+
 local M = {}
 
 ---@class review.State
@@ -15,6 +17,7 @@ local M = {}
 ---@field marks review.Marks            -- by line key
 ---@field comments table[]             -- (v0.5)
 ---@field folds review.Folds           -- explorer: user fold choices by change id
+---@field fold_default review.FoldDefault
 ---@field contents table<string, table<string, string[]>>  -- new text lines by commit id, then path
 ---@field open_file? review.OpenFile    -- file in the diff window
 
@@ -35,6 +38,7 @@ function M.initial(config)
     marks = {},
     comments = {},
     folds = {},
+    fold_default = folds.PENDING,
     contents = {},
   }
 end

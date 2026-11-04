@@ -16,6 +16,20 @@ local function wait_for_line(expected)
   end, 20)
 end
 
+--- Wait for an explorer line that starts with `prefix`. Returns its 1-based row, or nil.
+---@param prefix string
+---@return integer?
+local function wait_for_row(prefix)
+  local row
+  vim.wait(5000, function()
+    row = vim.iter(ipairs(explorer_lines())):find(function(_, line)
+      return vim.startswith(line, prefix)
+    end)
+    return row ~= nil
+  end, 20)
+  return row
+end
+
 --- Repo with one revision that adds a.txt ("hello"). Opens the review and opens a.txt with <CR>.
 ---@return string repo
 local function open_one_file_review()
@@ -25,8 +39,7 @@ local function open_one_file_review()
   helpers.jj(repo, { "new" })
   vim.cmd.cd(repo)
   vim.cmd("Review")
-  wait_for_line("    A a.txt")
-  vim.api.nvim_win_set_cursor(0, { vim.fn.index(explorer_lines(), "    A a.txt") + 1, 0 })
+  vim.api.nvim_win_set_cursor(0, { assert(wait_for_row("    A a.txt"), "file row"), 0 })
   vim.api.nvim_feedkeys(vim.keycode("<CR>"), "x", false)
   vim.wait(5000, function()
     return vim.api.nvim_buf_get_name(0):match("a%.txt$") ~= nil
@@ -56,7 +69,7 @@ describe("review (end to end)", function()
     helpers.jj(repo, { "new" })
     vim.cmd.cd(repo)
     vim.cmd("Review")
-    wait_for_line("Stack (1)")
+    wait_for_row("Stack (1)")
     assert.are.same("revset: (trunk()..@)::", explorer_lines()[2])
     assert.truthy(explorer_lines()[4]:find(": first change$"))
   end)

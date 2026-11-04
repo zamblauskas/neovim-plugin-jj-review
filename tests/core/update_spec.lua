@@ -93,6 +93,17 @@ describe("core.update", function()
     assert.are.same({ "RenderExplorer" }, types(effects))
   end)
 
+  it("computes the default fold once, when the last diff loads", function()
+    local state = update(opened_state(), msg.root_resolved(1, "/repo"))
+    state = update(state, msg.stack_loaded(1, { rev("b", { "a" }), rev("a", {}) }))
+    state = update(state, msg.diff_loaded(1, "a", {}))
+    assert.is_false(state.fold_default.ready)
+    state = update(state, msg.diff_loaded(1, "b", {}))
+    assert.are.same({ ready = true }, state.fold_default)
+    local again = update(state, msg.diff_loaded(1, "b", {}))
+    assert.are.equal(state.fold_default, again.fold_default)
+  end)
+
   it("stores a loaded diff by commit id and renders", function()
     local files = { { status = "added", path = "f", binary = false, hunks = {} } }
     local state, effects = update(opened_state(), msg.diff_loaded(1, "a", files))

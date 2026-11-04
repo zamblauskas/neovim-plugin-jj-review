@@ -1,6 +1,7 @@
 -- Handlers: review state from the store (marks.json).
 
 local effect = require("review.core.effect")
+local folds = require("review.core.folds")
 local tbl = require("review.lib.tbl")
 
 local M = {}
@@ -9,7 +10,9 @@ local M = {}
 ---@param msg review.Msg.StoreLoaded
 ---@return review.State, review.Effect[]
 function M.StoreLoaded(state, msg)
-  return tbl.with(state, { marks = msg.marks }), { effect.render_explorer(), effect.render_diff() }
+  local next_state = tbl.with(state, { marks = msg.marks })
+  return tbl.with(next_state, { fold_default = folds.default_for(next_state) }),
+    { effect.render_explorer(), effect.render_diff() }
 end
 
 ---@param state review.State

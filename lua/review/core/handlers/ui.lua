@@ -20,7 +20,7 @@ end
 ---@param msg review.Msg.FoldToggled
 ---@return review.State, review.Effect[]
 function M.FoldToggled(state, msg)
-  local next_folds = folds.toggle(state.folds, revisions(state), msg.change_id)
+  local next_folds = folds.toggle(state.folds, state.fold_default, revisions(state), msg.change_id)
   return tbl.with(state, { folds = next_folds }), { effect.render_explorer() }
 end
 

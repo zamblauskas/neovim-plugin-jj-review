@@ -27,6 +27,29 @@ local function rev(id, description, working_copy)
   }
 end
 
+--- File diff with one added line whose key is `path`.
+---@param status string
+---@param path string
+---@param fields? table
+---@return review.FileDiff
+local function file(status, path, fields)
+  local hunk = {
+    old_start = 0,
+    old_count = 0,
+    new_start = 1,
+    new_count = 1,
+    lines = { { kind = "+", text = "x", key = path } },
+  }
+  return vim.tbl_extend("force", { status = status, path = path, binary = false, hunks = { hunk } }, fields or {})
+end
+
+--- Left part of a row, without the right-aligned count.
+---@param line string
+---@return string
+local function left(line)
+  return line:match("^(.-)%s+%d+/%d+$") or line
+end
+
 describe("view.explorer", function()
   it("shows loading", function()
     local v = view.render(state_with({ type = "loading" }))
@@ -60,22 +83,22 @@ describe("view.explorer", function()
     state = tbl.with(state, {
       diffs = {
         uxlm = {
-          { status = "added", path = "src/app/a.ts", binary = false, hunks = {} },
-          { status = "renamed", path = "b.ts", old_path = "old/b.ts", binary = false, hunks = {} },
-          { status = "deleted", path = "c.bin", binary = true, hunks = {} },
+          file("added", "src/app/a.ts"),
+          file("renamed", "b.ts", { old_path = "old/b.ts" }),
+          file("deleted", "c.bin", { binary = true, hunks = {}, key = "c.bin" }),
         },
       },
     })
     local v = view.render(state)
     assert.are.same(
       { "    src/app/", "      A a.ts", "    R b.ts ← old/b.ts", "    D c.bin (binary)" },
-      vim.list_slice(v.lines, 5)
+      vim.tbl_map(left, vim.list_slice(v.lines, 5))
     )
   end)
 
   it("colors the status letter", function()
     local state = state_with({ type = "ok", revisions = { rev("uxlm", "x") } })
-    state = tbl.with(state, { diffs = { uxlm = { { status = "added", path = "a", binary = false, hunks = {} } } } })
+    state = tbl.with(state, { diffs = { uxlm = { file("added", "a") } } })
     local hl = vim.tbl_filter(function(h)
       return h.group == "ReviewStatusAdded"
     end, view.render(state).highlights)
@@ -90,11 +113,44 @@ describe("view.explorer", function()
 
   it("maps rows to revision and file targets", function()
     local state = state_with({ type = "ok", revisions = { rev("uxlm", "x") } })
-    state = tbl.with(state, { diffs = { uxlm = { { status = "added", path = "d/a", binary = false, hunks = {} } } } })
+    state = tbl.with(state, { diffs = { uxlm = { file("added", "d/a") } } })
     assert.are.same({
       [4] = { type = "revision", change_id = "uxlmfull" },
       [6] = { type = "file", change_id = "uxlmfull", path = "d/a" },
     }, view.render(state).targets)
+  end)
+
+  describe("counts", function()
+    local function counted_state(marks)
+      local state = state_with({ type = "ok", revisions = { rev("uxlm", "x") } })
+      return tbl.with(state, { diffs = { uxlm = { file("added", "a"), file("added", "b") } }, marks = marks })
+    end
+
+    it("right-aligns counts to the explorer width", function()
+      local v = view.render(counted_state({ a = { created = "t" } }))
+      assert.are.same("Stack (1)" .. string.rep(" ", 28) .. "1/2", v.lines[1])
+      assert.are.same(40, vim.fn.strdisplaywidth(v.lines[4]))
+      assert.truthy(v.lines[4]:find("1/2$"))
+      assert.are.same("    ✅ A a" .. string.rep(" ", 27) .. "1/1", v.lines[5])
+    end)
+
+    it("marks a done revision", function()
+      local v = view.render(counted_state({ a = { created = "t" }, b = { created = "t" } }))
+      assert.truthy(v.lines[4]:find("^▾ ✅ "))
+    end)
+
+    it("has no stack count while a diff loads", function()
+      local state = tbl.with(counted_state({}), { diffs = {} })
+      assert.are.same("Stack (1)", view.render(state).lines[1])
+    end)
+
+    it("cuts a long name to keep the count", function()
+      local state = state_with({ type = "ok", revisions = { rev("uxlm", string.rep("d", 60)) } })
+      state = tbl.with(state, { diffs = { uxlm = { file("added", "a") } } })
+      local line = view.render(state).lines[4]
+      assert.are.same(40, vim.fn.strdisplaywidth(line))
+      assert.truthy(line:find("d… 0/1$"))
+    end)
   end)
 
   it("shows an empty stack", function()
