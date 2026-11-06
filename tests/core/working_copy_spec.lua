@@ -23,6 +23,16 @@ describe("core working copy handlers", function()
     assert.are.same({}, select(2, update(state(), msg.file_saved(1, "/repo/.jj/review/marks.json"))))
   end)
 
+  it("snapshots on request", function()
+    local _, effects = update(state(), msg.snapshot_requested())
+    assert.are.same({ effect.snapshot("/repo") }, effects)
+  end)
+
+  it("snapshots nothing without a root", function()
+    local no_root = tbl.with(state_mod.initial(config.resolve()), { open = true, generation = 1 })
+    assert.are.same({}, select(2, update(no_root, msg.snapshot_requested())))
+  end)
+
   it("runs jj edit", function()
     local _, effects = update(state(), msg.edit_requested("kxyz"))
     assert.are.same({ effect.jj_edit("/repo", "kxyz") }, effects)

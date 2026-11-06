@@ -22,6 +22,16 @@ function M.FileSaved(state, msg)
   return state, { effect.snapshot(state.root) }
 end
 
+--- The user asked for a snapshot: jj sees changes made outside Neovim. A new operation refreshes the review.
+---@param state review.State
+---@return review.State, review.Effect[]
+function M.SnapshotRequested(state)
+  if not state.root then
+    return state, {}
+  end
+  return state, { effect.snapshot(state.root) }
+end
+
 ---@param state review.State
 ---@param msg review.Msg.EditRequested
 ---@return review.State, review.Effect[]

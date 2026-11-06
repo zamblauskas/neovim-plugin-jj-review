@@ -36,7 +36,7 @@ end
 
 ---@param args vim.api.keyset.create_user_command.command_args
 local function command(args)
-  local subcommands = { close = M.close, clear = M.clear }
+  local subcommands = { close = M.close, clear = M.clear, refresh = M.refresh }
   local subcommand = subcommands[args.fargs[1]]
   if subcommand and #args.fargs == 1 then
     subcommand()
@@ -64,7 +64,7 @@ function M.setup(opts)
   vim.api.nvim_create_user_command(
     "Review",
     command,
-    { nargs = "*", desc = "Review a jj stack: [revset] | close | clear" }
+    { nargs = "*", desc = "Review a jj stack: [revset] | close | clear | refresh" }
   )
   set_keymaps(config.keymaps)
 end
@@ -82,6 +82,15 @@ function M.close()
   if app then
     app.dispatch(msg.closed())
   end
+end
+
+--- Snapshot the working copy, so changes made outside Neovim refresh the review.
+function M.refresh()
+  if not (app and app.state().open and app.state().root) then
+    vim.notify("review: open a review first (:Review)", vim.log.levels.WARN)
+    return
+  end
+  app.dispatch(msg.snapshot_requested())
 end
 
 --- Delete all marks in the repo of the open review, after confirmation.

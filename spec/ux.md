@@ -174,3 +174,4 @@ The cursor does not move after a mark. Use `]r` to go to the next unreviewed lin
 | `:Review [revset]` | Open the explorer for the stack. Default revset: `(trunk()..@)::` |
 | `:Review close` | Close the explorer and review buffers |
 | `:Review clear` | Delete all marks and comments in the repo. Asks for confirmation. Needs an open review. |
+| `:Review refresh` | Snapshot the working copy (`jj util snapshot`), so changes made outside Neovim are seen. Needs an open review. |

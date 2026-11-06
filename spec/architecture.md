@@ -131,7 +131,7 @@ See `core/state.lua` (`review.State`). Main fields: `config`, `open`, `generatio
 
 ## Messages
 
-v0.6 adds `FileSaved{path}`, `EditRequested{change_id}`, `CommandFailed{text}`. v0.5 adds `CommentRequested{target}`, `CommentSubmitted{draft, text, id, now}`, `CommentDeleteRequested{change_id,
+v0.6 adds `FileSaved{path}`, `SnapshotRequested`, `EditRequested{change_id}`, `CommandFailed{text}`. v0.5 adds `CommentRequested{target}`, `CommentSubmitted{draft, text, id, now}`, `CommentDeleteRequested{change_id,
 path, line}`, `CommentDeleted{id}`; `StoreLoaded` carries comments. v0.4 adds `RefreshRequested` (watcher or focus → `CheckOp` and `LoadStore`). v0.3 has the lifecycle and JJ messages, `StoreLoaded{marks}`, `StoreFailed{error}`, `ToggleRequested{target, now}`,
 `FoldToggled`, `FileOpened`, `FileStepped`, `UnreviewedStepped{change_id, path, line, offset}`. The rest is the plan.
 A failed `jj diff` or `jj file show` is a `JjFailed` (stack error state). Messages that make marks carry `now`
@@ -139,7 +139,7 @@ A failed `jj diff` or `jj file show` is a `JjFailed` (stack error state). Messag
 
 | Group | Messages |
 |---|---|
-| Lifecycle | `Opened{cwd, revset}`, `Closed`, `Cleared`, `RefreshRequested` |
+| Lifecycle | `Opened{cwd, revset}`, `Closed`, `Cleared`, `RefreshRequested`, `SnapshotRequested` |
 | JJ | `RootResolved{root}`, `OpChecked{op_id}`, `StackLoaded{revisions}`, `DiffLoaded{commit_id, files}`, `ContentLoaded{commit_id, path, lines}`, `JjFailed{stderr}` |
 | Store | `StoreLoaded{marks, comments}`, `StoreFailed{error}` |
 | Review | `ToggleRequested{target, now}`, `UnreviewedStepped{change_id, path, line, offset}`, `CommentSubmitted{anchor, text}`, `CommentDeleted{id}` |
@@ -246,7 +246,7 @@ All reads use `--ignore-working-copy` (no snapshot, so no new operation, so no r
 | Diff | `jj diff -r <commit_id> --git -w --context 2` |
 | Content | `jj file show -r <commit_id> -- 'root-file:"<path>"'` (literal path; a bare path is a fileset expression) |
 | Edit | `jj edit <change_id>` |
-| Snapshot after save (working-copy mode) | `jj util snapshot` |
+| Snapshot after save (working-copy mode), or `:Review refresh` | `jj util snapshot` |
 
 Diff calls for many revisions run in parallel, with a limit (config `max_parallel_jj`, default 4).
 

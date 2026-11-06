@@ -28,7 +28,7 @@ Trigger: the JJ operation id changed. Checked:
 On refresh: evaluate the stack again, recompute diffs and counts, read `marks.json` again, redraw.
 
 Changes the agent makes without a jj command are not seen until a jj command runs (the plugin never snapshots
-in view mode).
+on its own in view mode). `:Review refresh` runs `jj util snapshot`; the new operation refreshes the review.
 
 No refresh loop: all JJ reads by the plugin use `--ignore-working-copy`. They never snapshot, so they never create an operation. In working-copy mode, saving a buffer triggers one snapshot, then one refresh.
 

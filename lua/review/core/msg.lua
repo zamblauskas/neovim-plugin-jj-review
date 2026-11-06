@@ -26,6 +26,7 @@ local M = {}
 ---| review.Msg.CommentDeleteRequested
 ---| review.Msg.CommentDeleted
 ---| review.Msg.FileSaved
+---| review.Msg.SnapshotRequested
 ---| review.Msg.EditRequested
 ---| review.Msg.CommandFailed
 ---| review.Msg.FocusChanged
@@ -148,6 +149,10 @@ local M = {}
 ---@field type "FileSaved"
 ---@field generation integer
 ---@field path string
+
+--- The user asked for a snapshot of the working copy (:Review refresh).
+---@class review.Msg.SnapshotRequested
+---@field type "SnapshotRequested"
 
 --- Make the revision the working copy (`jj edit`).
 ---@class review.Msg.EditRequested
@@ -294,6 +299,11 @@ end
 ---@return review.Msg.FileSaved
 function M.file_saved(generation, path)
   return { type = "FileSaved", generation = generation, path = path }
+end
+
+---@return review.Msg.SnapshotRequested
+function M.snapshot_requested()
+  return { type = "SnapshotRequested" }
 end
 
 ---@param change_id string
