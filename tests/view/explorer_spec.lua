@@ -4,6 +4,14 @@ local state_mod = require("review.core.state")
 local tbl = require("review.lib.tbl")
 local view = require("review.view.explorer")
 
+local WIDTH = 40
+
+---@param state review.State
+---@return review.View
+local function view_of(state)
+  return view.render(state, WIDTH)
+end
+
 ---@param stack review.Stack
 ---@return review.State
 local function state_with(stack)
@@ -52,13 +60,13 @@ end
 
 describe("view.explorer", function()
   it("shows loading", function()
-    local v = view.render(state_with({ type = "loading" }))
+    local v = view_of(state_with({ type = "loading" }))
     assert.are.same({ "Stack", "revset: trunk()..@", "", "Loading…" }, v.lines)
   end)
 
   it("shows revisions with the working copy mark", function()
     local stack = { type = "ok", revisions = { rev("uxlm", "final fixes", true), rev("jrgk", "") } }
-    local v = view.render(state_with(stack))
+    local v = view_of(state_with(stack))
     assert.are.same({
       "Stack (2)",
       "revset: trunk()..@",
@@ -70,7 +78,7 @@ describe("view.explorer", function()
   end)
 
   it("highlights the id prefix by byte range", function()
-    local v = view.render(state_with({ type = "ok", revisions = { rev("uxlm", "x", true) } }))
+    local v = view_of(state_with({ type = "ok", revisions = { rev("uxlm", "x", true) } }))
     local id_hl = vim.tbl_filter(function(h)
       return h.group == "ReviewChangeId"
     end, v.highlights)[1]
@@ -89,7 +97,7 @@ describe("view.explorer", function()
         },
       },
     })
-    local v = view.render(state)
+    local v = view_of(state)
     assert.are.same(
       { "    src/app/", "      A a.ts", "    R b.ts ← old/b.ts", "    D c.bin (binary)" },
       vim.tbl_map(left, vim.list_slice(v.lines, 5))
@@ -101,14 +109,14 @@ describe("view.explorer", function()
     state = tbl.with(state, { diffs = { uxlm = { file("added", "a") } } })
     local hl = vim.tbl_filter(function(h)
       return h.group == "ReviewStatusAdded"
-    end, view.render(state).highlights)
+    end, view_of(state).highlights)
     assert.are.same({ { row = 4, col_start = 4, col_end = 6, group = "ReviewStatusAdded" } }, hl)
   end)
 
   it("hides files of a closed revision", function()
     local state = state_with({ type = "ok", revisions = { rev("uxlm", "x") } })
     state = tbl.with(state, { folds = { uxlmfull = "closed" } })
-    assert.are.same(4, #view.render(state).lines)
+    assert.are.same(4, #view_of(state).lines)
   end)
 
   it("maps rows to revision and file targets", function()
@@ -117,7 +125,7 @@ describe("view.explorer", function()
     assert.are.same({
       [4] = { type = "revision", change_id = "uxlmfull" },
       [6] = { type = "file", change_id = "uxlmfull", path = "d/a" },
-    }, view.render(state).targets)
+    }, view_of(state).targets)
   end)
 
   describe("counts", function()
@@ -126,8 +134,8 @@ describe("view.explorer", function()
       return tbl.with(state, { diffs = { uxlm = { file("added", "a"), file("added", "b") } }, marks = marks })
     end
 
-    it("right-aligns counts to the explorer width", function()
-      local v = view.render(counted_state({ a = { created = "t" } }))
+    it("right-aligns counts to the given width", function()
+      local v = view_of(counted_state({ a = { created = "t" } }))
       assert.are.same("Stack (1)" .. string.rep(" ", 28) .. "1/2", v.lines[1])
       assert.are.same(40, vim.fn.strdisplaywidth(v.lines[4]))
       assert.truthy(v.lines[4]:find("1/2$"))
@@ -135,19 +143,19 @@ describe("view.explorer", function()
     end)
 
     it("marks a done revision", function()
-      local v = view.render(counted_state({ a = { created = "t" }, b = { created = "t" } }))
+      local v = view_of(counted_state({ a = { created = "t" }, b = { created = "t" } }))
       assert.truthy(v.lines[4]:find("^▾ ✅ "))
     end)
 
     it("has no stack count while a diff loads", function()
       local state = tbl.with(counted_state({}), { diffs = {} })
-      assert.are.same("Stack (1)", view.render(state).lines[1])
+      assert.are.same("Stack (1)", view_of(state).lines[1])
     end)
 
     it("cuts a long name to keep the count", function()
       local state = state_with({ type = "ok", revisions = { rev("uxlm", string.rep("d", 60)) } })
       state = tbl.with(state, { diffs = { uxlm = { file("added", "a") } } })
-      local line = view.render(state).lines[4]
+      local line = view_of(state).lines[4]
       assert.are.same(40, vim.fn.strdisplaywidth(line))
       assert.truthy(line:find("d… 0/1$"))
     end)
@@ -174,18 +182,26 @@ describe("view.explorer", function()
     ---@return review.View
     local function render(list)
       local state = state_with({ type = "ok", revisions = { rev("uxlm", "x") } })
-      return view.render(tbl.with(state, { diffs = { uxlm = { file("added", "a") } }, comments = list }))
+      return view_of(tbl.with(state, { diffs = { uxlm = { file("added", "a") } }, comments = list }))
     end
 
-    it("shows 💬 on the file and the revision", function()
+    it("shows 💬 after the name, with the count aligned at the end", function()
       local v = render({ comment({}) })
-      assert.truthy(v.lines[4]:find("0/1 💬$"))
-      assert.truthy(v.lines[5]:find("0/1 💬$"))
+      assert.truthy(v.lines[4]:find("x 💬 +0/1$"))
+      assert.truthy(v.lines[5]:find("A a 💬 +0/1$"))
+      assert.are.same(WIDTH, vim.fn.strdisplaywidth(v.lines[5]))
     end)
 
     it("shows ⚠ for an outdated comment", function()
       local v = render({ comment({ keys = { "+|a|gone|1" } }) })
-      assert.truthy(v.lines[5]:find("💬 ⚠$"))
+      assert.truthy(v.lines[5]:find("A a 💬 ⚠ +0/1$"))
+    end)
+
+    it("cuts a long name but keeps 💬 and the count", function()
+      local state = state_with({ type = "ok", revisions = { rev("uxlm", string.rep("d", 60)) } })
+      local v = view_of(tbl.with(state, { diffs = { uxlm = { file("added", "a") } }, comments = { comment({}) } }))
+      assert.are.same(WIDTH, vim.fn.strdisplaywidth(v.lines[4]))
+      assert.truthy(v.lines[4]:find("d… 💬 0/1$"))
     end)
 
     it("lists orphaned comments at the bottom with a target", function()
@@ -210,22 +226,22 @@ describe("view.explorer", function()
     local state = state_with({ type = "ok", revisions = { rev("uxlm", "x", true), rev("jrgk", "y") } })
     local icons = vim.tbl_extend("force", state.config.icons, { working_copy = "WC" })
     state = tbl.with(state, { config = tbl.with(state.config, { icons = icons }) })
-    local lines = view.render(state).lines
+    local lines = view_of(state).lines
     assert.are.same({ "▸ WC uxlm: x", "▾    jrgk: y" }, { lines[4], lines[5] })
   end)
 
   it("shows an empty stack", function()
-    local v = view.render(state_with({ type = "ok", revisions = {} }))
+    local v = view_of(state_with({ type = "ok", revisions = {} }))
     assert.are.same("Nothing to review", v.lines[4])
   end)
 
   it("shows a not linear stack with its heads", function()
-    local v = view.render(state_with({ type = "error", reason = "not_linear", revisions = { "uxl", "mzo" } }))
+    local v = view_of(state_with({ type = "error", reason = "not_linear", revisions = { "uxl", "mzo" } }))
     assert.are.same({ "✖ Stack is not linear", "  revisions: uxl, mzo" }, { v.lines[4], v.lines[5] })
   end)
 
   it("shows jj stderr lines", function()
-    local v = view.render(state_with({ type = "error", reason = "jj_failed", detail = "Error: a\nHint: b" }))
+    local v = view_of(state_with({ type = "error", reason = "jj_failed", detail = "Error: a\nHint: b" }))
     assert.are.same({ "✖ jj failed", "  Error: a", "  Hint: b" }, { v.lines[4], v.lines[5], v.lines[6] })
   end)
 end)

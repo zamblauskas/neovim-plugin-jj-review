@@ -13,7 +13,7 @@ local M = {}
 
 local ns = vim.api.nvim_create_namespace("review.explorer")
 
----@type { buf: integer?, win: integer? }
+---@type { buf: integer?, win: integer?, width: integer? }  -- width: text columns of the last render
 local ui = {}
 
 --- Row targets of the last render, by 1-based line.
@@ -91,12 +91,45 @@ local function set_keymaps(buf, app)
   end
 end
 
+---@return boolean
+local function is_open()
+  return ui.win ~= nil and vim.api.nvim_win_is_valid(ui.win)
+end
+
+--- Text columns of the explorer window; the configured width while no window is open.
+---@param state review.State
+---@return integer
+local function text_width(state)
+  if not is_open() then
+    return state.config.explorer_width
+  end
+  local win = assert(ui.win, "explorer window")
+  return vim.api.nvim_win_get_width(win) - vim.fn.getwininfo(win)[1].textoff
+end
+
+--- Render again when the explorer window changes width. The autocmd removes itself once the explorer is closed.
+---@param win integer
+---@param app review.App
+local function rerender_on_resize(win, app)
+  vim.api.nvim_create_autocmd("WinResized", {
+    callback = function()
+      if not is_open() or ui.win ~= win then
+        return true
+      end
+      if text_width(app.state()) ~= ui.width then
+        M.render(app.state())
+      end
+    end,
+  })
+end
+
 --- Keymaps. Closing the window (`:q`) closes the review too.
 ---@param buf integer
 ---@param win integer
 ---@param app review.App
 local function bind(buf, win, app)
   set_keymaps(buf, app)
+  rerender_on_resize(win, app)
   vim.api.nvim_create_autocmd("WinClosed", {
     pattern = tostring(win),
     once = true,
@@ -105,11 +138,6 @@ local function bind(buf, win, app)
       app.dispatch(msg.closed())
     end,
   })
-end
-
----@return boolean
-local function is_open()
-  return ui.win ~= nil and vim.api.nvim_win_is_valid(ui.win)
 end
 
 --- Open the explorer on the left, or focus it if open.
@@ -155,7 +183,8 @@ end
 ---@param state review.State
 function M.render(state)
   if ui.buf and vim.api.nvim_buf_is_valid(ui.buf) then
-    local rendered = view.render(state)
+    ui.width = text_width(state)
+    local rendered = view.render(state, ui.width)
     local old_targets = targets
     apply.view(ui.buf, ns, rendered)
     targets = rendered.targets or {}

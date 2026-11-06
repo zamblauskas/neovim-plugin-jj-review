@@ -40,6 +40,45 @@ describe("shell.explorer", function()
     assert.are.same("Stack", vim.api.nvim_buf_get_lines(buf, 0, 1, false)[1])
   end)
 
+  describe("width", function()
+    local function counted_app()
+      local rev = {
+        change_id = "abcd",
+        short_id = "abcd",
+        id_prefix = "a",
+        commit_id = "c1",
+        parents = {},
+        empty = false,
+        working_copy = false,
+        description = "",
+      }
+      return fake_app({ stack = { type = "ok", revisions = { rev } }, diffs = { c1 = {} } })
+    end
+
+    ---@return integer
+    local function first_line_width()
+      local buf = assert(explorer.handles().buf, "buffer")
+      return vim.fn.strdisplaywidth(vim.api.nvim_buf_get_lines(buf, 0, 1, false)[1])
+    end
+
+    it("aligns counts to the window width, not the configured width", function()
+      local app = counted_app()
+      explorer.open(app)
+      vim.api.nvim_win_set_width(assert(explorer.handles().win, "window"), 25)
+      explorer.render(app.state())
+      assert.are.same(25, first_line_width())
+    end)
+
+    it("renders again when the window is resized", function()
+      local app = counted_app()
+      explorer.open(app)
+      explorer.render(app.state())
+      vim.api.nvim_win_set_width(assert(explorer.handles().win, "window"), 22)
+      vim.api.nvim_exec_autocmds("WinResized", {})
+      assert.are.same(22, first_line_width())
+    end)
+  end)
+
   it("dispatches Closed on q", function()
     local app = fake_app()
     explorer.open(app)

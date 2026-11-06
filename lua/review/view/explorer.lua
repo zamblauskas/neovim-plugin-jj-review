@@ -12,6 +12,7 @@ local M = {}
 
 ---@class review.ExplorerEntry
 ---@field chunks review.Row
+---@field icons? review.Row  -- after the left part, never cut (comment icons)
 ---@field right? review.Row  -- right-aligned (counts)
 ---@field target? review.ExplorerTarget
 
@@ -58,16 +59,6 @@ local function comment_icons(placements, config)
     table.insert(icons, { " " .. config.warning, "ReviewCommentOutdated" })
   end
   return icons
-end
-
---- Right part: count and comment icons; nil when empty.
----@param count review.Count?
----@param placements review.Placement[]
----@param icons review.IconConfig
----@return review.Row?
-local function right_chunks(count, placements, icons)
-  local chunks = vim.list_extend(count_chunks(count) or {}, comment_icons(placements, icons))
-  return #chunks > 0 and chunks or nil
 end
 
 ---@class review.ExplorerContext
@@ -184,7 +175,8 @@ local function tree_entry(entry, change_id, ctx)
   vim.list_extend(chunks, { { status[1] .. " ", status[2] }, { entry.name } })
   return {
     chunks = vim.list_extend(chunks, file_suffix(file)),
-    right = right_chunks(count, placements_at(ctx, change_id, file.path), ctx.state.config.icons),
+    icons = comment_icons(placements_at(ctx, change_id, file.path), ctx.state.config.icons),
+    right = count_chunks(count),
     target = { type = "file", change_id = change_id, path = file.path },
   }
 end
@@ -212,12 +204,12 @@ local function revision_entries(ctx, revisions)
     local open = folds.is_open(state.folds, state.fold_default, revisions, rev.change_id)
     local files = state.diffs[rev.commit_id]
     local count = files and counts.files(files, state.marks)
-    local target = { type = "revision", change_id = rev.change_id }
-    local right = right_chunks(count, placements_at(ctx, rev.change_id), state.config.icons)
-    table.insert(
-      entries,
-      { chunks = revision_row(rev, open, count, state.config.icons), right = right, target = target }
-    )
+    table.insert(entries, {
+      chunks = revision_row(rev, open, count, state.config.icons),
+      icons = comment_icons(placements_at(ctx, rev.change_id), state.config.icons),
+      right = count_chunks(count),
+      target = { type = "revision", change_id = rev.change_id },
+    })
     if open then
       vim.list_extend(entries, file_entries(ctx, rev))
     end
@@ -302,28 +294,47 @@ local function truncate_chunks(chunks, width)
   return out
 end
 
---- Row chunks with the right part aligned to `width`. The left part is cut if it is too long.
+---@param chunks review.Chunk[]
+---@return integer
+local function chunks_width(chunks)
+  return text_lib.width(chunks_text(chunks))
+end
+
+--- Left chunks cut to leave room for the icons and the right part, then the icons.
+---@param entry review.ExplorerEntry
+---@param width integer
+---@return review.Row
+local function fit_left(entry, width)
+  local icons, right = entry.icons or {}, entry.right or {}
+  local room = width - chunks_width(icons) - chunks_width(right) - (#right > 0 and 1 or 0)
+  return vim.list_extend(truncate_chunks(entry.chunks, room), icons)
+end
+
+--- Row chunks with the right part aligned to `width`. The left part is cut if it is too long; icons stay.
 ---@param entry review.ExplorerEntry
 ---@param width integer
 ---@return review.Row
 local function fit(entry, width)
-  if not entry.right then
+  if not entry.right and not entry.icons then
     return entry.chunks
   end
-  local right_width = text_lib.width(chunks_text(entry.right))
-  local left = truncate_chunks(entry.chunks, width - right_width - 1)
-  local pad = math.max(width - text_lib.width(chunks_text(left)) - right_width, 1)
+  local left = fit_left(entry, width)
+  if not entry.right then
+    return left
+  end
+  local pad = math.max(width - chunks_width(left) - chunks_width(entry.right), 1)
   return vim.list_extend(vim.list_extend(left, { { string.rep(" ", pad) } }), entry.right)
 end
 
 ---@param state review.State
+---@param width integer  -- text columns of the explorer window
 ---@return review.View
-function M.render(state)
+function M.render(state, width)
   local ctx = { state = state, placements = comments.place(state) }
   local entries = vim.list_extend(header_entries(state), body_entries(ctx))
   local view = { lines = {}, highlights = {}, targets = {} }
   for i, entry in ipairs(entries) do
-    local text, highlights = row_lib.flatten(fit(entry, state.config.explorer_width), i - 1)
+    local text, highlights = row_lib.flatten(fit(entry, width), i - 1)
     table.insert(view.lines, text)
     vim.list_extend(view.highlights, highlights)
     view.targets[i] = entry.target

@@ -7,9 +7,9 @@
 │ Stack 156/465                   │                                                   │
 │                                 │                                                   │
 │ ▸ uxl: final fixes     12/321   │  (see "Diff view")                                │
-│ ▾ kpt: add service    0/68  💬  │                                                   │
+│ ▾ kpt: add service 💬     0/68  │                                                   │
 │   src/app/service/              │                                                   │
-│     controller.ts      0/56  💬 │                                                   │
+│     controller.ts 💬      0/56  │                                                   │
 │     index.ts           0/12     │                                                   │
 │ ▸ ✅ jrg: base model  144/144   │                                                   │
 │                                 │                                                   │
@@ -41,9 +41,10 @@
 - Default fold: only the oldest revision with unreviewed lines is unfolded. It is computed once per stack load,
   when all diffs are loaded, so a revision does not close while you review it. Before that, the oldest revision is
   open. A fold you set stays until the review closes.
-- Counts are right-aligned to the explorer width. A long name is cut with `…`. The stack count shows when all
+- Counts are right-aligned to the text width of the explorer window. The rows render again when the window
+  width changes. A long name is cut with `…`. The stack count shows when all
   diffs are loaded.
-- `💬` and `⚠` come after the count.
+- `💬` and `⚠` come after the name. A long name is cut before them, so they stay visible.
 - Orphaned comments section at the bottom: `⚠ path:line "first line of the text"`. Hidden if empty.
 
 ### Error state
