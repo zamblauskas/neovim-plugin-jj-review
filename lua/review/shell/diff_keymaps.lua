@@ -72,6 +72,12 @@ local function step_actions(file)
   }
 end
 
+--- View actions by config key name.
+---@return table<string, fun(): review.Msg>
+local function view_actions()
+  return { toggle_removed = msg.removed_toggled }
+end
+
 --- The selected line range as target fields. Leaves visual mode.
 ---@param file review.FileKey
 ---@return table
@@ -121,7 +127,8 @@ end
 ---@param app review.App
 ---@return review.MappedKey[]
 function M.set(buf, file, app)
-  local normal = vim.tbl_extend("error", toggle_actions(file), comment_actions(file), step_actions(file))
+  local normal =
+    vim.tbl_extend("error", toggle_actions(file), comment_actions(file), step_actions(file), view_actions())
   return vim.list_extend(map_all(buf, "n", normal, app), map_all(buf, "x", visual_actions(file), app))
 end
 

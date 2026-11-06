@@ -24,6 +24,7 @@ local M = {}
 ---@field buffers table<string, review.BufferState>  -- review files with a buffer, by file key (core/review_buffers.lua)
 ---@field show_pending? string          -- key of the file to show when its buffer is ready
 ---@field current? review.FileKey      -- review file in the last focused window (reported by the shell)
+---@field show_removed boolean          -- diff: removed blocks are drawn
 
 --- One review file: a revision at a path.
 ---@class review.FileKey
@@ -54,6 +55,7 @@ function M.initial(config)
     disk_commit = false,
     contents = {},
     buffers = {},
+    show_removed = true,
   }
 end
 

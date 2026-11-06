@@ -32,6 +32,7 @@ M.SECTIONS = {
       { "prev_unreviewed", "Previous unreviewed change" },
       { "next_file", "Next file in the revision" },
       { "prev_file", "Previous file in the revision" },
+      { "toggle_removed", "Show / hide removed lines" },
     },
   },
   {

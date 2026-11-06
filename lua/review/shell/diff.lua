@@ -112,6 +112,7 @@ local function render_file(state, entry, placements)
     gutter_width = drawn_gutter[buf],
     marks = state.marks,
     dim = state.config.dim_reviewed,
+    show_removed = state.show_removed,
     comments = comments.in_file(placements, entry.file.change_id, entry.file.path),
     icons = state.config.icons,
   })

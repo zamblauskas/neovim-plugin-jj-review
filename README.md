@@ -79,6 +79,7 @@ Diff buffer:
 | `<leader>rx` | Delete the comment at the line |
 | `]r` / `[r` | Next / previous unreviewed change in the file |
 | `]R` / `[R` | Next / previous file in the revision |
+| `<leader>rh` | Show / hide removed lines (the buffer then reads as the file at the revision) |
 
 Global: `<leader>jvv` opens, `<leader>jvq` closes.
 
@@ -109,6 +110,7 @@ require("review").setup({
     prev_unreviewed = "[r",
     next_file = "]R",
     prev_file = "[R",
+    toggle_removed = "<leader>rh",
   },
   icons = {
     reviewed = "✅",

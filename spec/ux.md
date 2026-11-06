@@ -150,6 +150,7 @@ Buffer-local. Only in review buffers.
 | `<leader>rf` | Toggle reviewed: file |
 | `<leader>rc` | Add comment: line, or visual range. Unchanged lines are allowed. |
 | `<leader>rC` | Add comment: removed block above the cursor |
+| `<leader>rh` | Show / hide removed blocks. Hidden: the buffer reads as the file at the revision. Marks and comments stay. |
 | `<leader>rx` | Delete the comment shown at the cursor line (the first one if there are more) |
 | `]r` / `[r` | Next / previous unreviewed line or block, in this file only. No wrap. A block: its attach line. |
 | `]R` / `[R` | Next / previous file in the revision |

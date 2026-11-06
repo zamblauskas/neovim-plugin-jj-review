@@ -35,6 +35,7 @@ local function input(fields)
     gutter_width = 3,
     marks = {},
     dim = true,
+    show_removed = true,
     comments = {},
     icons = config.defaults.icons,
   }, fields or {})
@@ -46,6 +47,13 @@ describe("view.diff", function()
   it("highlights added lines and draws removed blocks with their placement", function()
     local f = file("@@ -1,7 +1,8 @@\n a\n-b\n+B\n c\n d\n e\n f\n-g\n+G\n+h\n")
     assert.are.same({ "-1^ b", "+1", "-6^ g", "+6", "+7" }, outline(view.render(f, INPUT)))
+  end)
+
+  it("draws no removed blocks when they are hidden", function()
+    local f = file("@@ -1,7 +1,8 @@\n a\n-b\n+B\n c\n d\n e\n f\n-g\n+G\n+h\n")
+    local rendered = view.render(f, input({ show_removed = false }))
+    assert.are.same({ "+1", "+6", "+7" }, outline(rendered))
+    assert.are.same(0, rendered.topfill)
   end)
 
   it("sets topfill for a block above line 1", function()

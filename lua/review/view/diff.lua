@@ -22,6 +22,7 @@ local PAD_WIDTH = 400
 ---@field gutter_width integer  -- columns before the text (signs, numbers)
 ---@field marks review.Marks
 ---@field dim boolean           -- dim reviewed lines
+---@field show_removed boolean  -- draw removed blocks
 ---@field comments review.Placement[]  -- comments shown in this file
 ---@field icons review.IconConfig
 
@@ -128,12 +129,15 @@ local function removed_mark(segment, input)
   }
 end
 
+--- Nil for a removed block when removed blocks are hidden.
 ---@param segment review.Segment
 ---@param input review.DiffViewInput
----@return review.ExtmarkSpec
+---@return review.ExtmarkSpec?
 local function segment_mark(segment, input)
   if segment.type == "added" then
     return added_mark(segment, input)
+  elseif not input.show_removed then
+    return nil
   end
   return removed_mark(segment, input)
 end
@@ -183,9 +187,12 @@ end
 ---@param input review.DiffViewInput
 ---@return review.DiffView
 function M.render(file, input)
-  local marks = vim.tbl_map(function(segment)
-    return segment_mark(segment, input)
-  end, changes.segments(file, input.line_count))
+  local marks = vim
+    .iter(changes.segments(file, input.line_count))
+    :map(function(segment)
+      return segment_mark(segment, input)
+    end)
+    :totable()
   vim.list_extend(
     marks,
     vim.tbl_map(function(placement)

@@ -28,6 +28,7 @@ local M = {}
 ---@field prev_unreviewed string|false -- diff buffer: previous unreviewed change in the file
 ---@field next_file string|false       -- diff buffer: next file in the revision
 ---@field prev_file string|false       -- diff buffer: previous file in the revision
+---@field toggle_removed string|false  -- diff buffer: show or hide the removed blocks
 
 ---@class review.IconConfig
 ---@field reviewed string      -- explorer: file or revision fully reviewed
@@ -59,6 +60,7 @@ M.defaults = {
     prev_unreviewed = "[r",
     next_file = "]R",
     prev_file = "[R",
+    toggle_removed = "<leader>rh",
   },
   icons = {
     reviewed = "✅",

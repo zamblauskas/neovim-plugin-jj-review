@@ -123,6 +123,13 @@ function M.BufferShown(state)
   return state, { effect.render_diff() }
 end
 
+--- Hide or show the removed blocks: the buffer text alone is the file at the revision.
+---@param state review.State
+---@return review.State, review.Effect[]
+function M.RemovedToggled(state)
+  return tbl.with(state, { show_removed = not state.show_removed }), { effect.render_diff() }
+end
+
 ---@param state review.State
 ---@param msg review.Msg.ContentLoaded
 ---@return review.State, review.Effect[]

@@ -31,6 +31,7 @@ local M = {}
 ---| review.Msg.CommandFailed
 ---| review.Msg.FocusChanged
 ---| review.Msg.BufferShown
+---| review.Msg.RemovedToggled
 
 ---@class review.Msg.Opened
 ---@field type "Opened"
@@ -102,6 +103,10 @@ local M = {}
 ---@class review.Msg.BufferShown
 ---@field type "BufferShown"
 ---@field file review.FileKey
+
+--- The user toggled the removed blocks of the diff on or off.
+---@class review.Msg.RemovedToggled
+---@field type "RemovedToggled"
 
 ---@class review.Msg.StoreLoaded
 ---@field type "StoreLoaded"
@@ -254,6 +259,11 @@ end
 ---@return review.Msg.BufferShown
 function M.buffer_shown(file)
   return { type = "BufferShown", file = file }
+end
+
+---@return review.Msg.RemovedToggled
+function M.removed_toggled()
+  return { type = "RemovedToggled" }
 end
 
 ---@param file? review.FileKey
