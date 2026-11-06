@@ -28,6 +28,7 @@ local LINKS = {
   ReviewStatusModified = "Changed",
   ReviewStatusDeleted = "Removed",
   ReviewStatusRenamed = "Special",
+  ReviewCurrent = "Visual",
 }
 
 --- Dimmed version of `base`. A link to `base` if a background is missing.

@@ -23,8 +23,8 @@ Later increments add messages, handlers, effects and view parts. They do not cha
 - Each step is one JJ revision with a description. After a step: `jj new`.
 - `make check` (format, lint, typecheck, test) passes before a step is done.
 - Tests come with the code, in the same revision.
-- Development load: `~/dotfiles/nvim/.config/nvim/lua/plugins/review.nvim.lua` with `dir =` this repo.
-- Tools: stylua and lua-language-server from PATH or Mason (`~/.local/share/nvim/mason/bin`). selene from PATH.
+- Development load: a lazy.nvim spec with `dir =` this repo.
+- Tools: stylua, lua-language-server and selene from PATH (or Mason).
 - lua-language-server check uses `.luarc.check.json` (`--configpath`). No `.luarc.json`: it overrides the library lazydev injects in the editor.
 - The order of steps can change during the work. This file is updated when it does.
 

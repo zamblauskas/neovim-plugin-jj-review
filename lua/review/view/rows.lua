@@ -11,6 +11,7 @@ local M = {}
 ---@field col_start integer -- byte
 ---@field col_end integer   -- byte, exclusive
 ---@field group string
+---@field line? boolean     -- the whole line, to the window edge (col_start and col_end are not used)
 
 ---@class review.View
 ---@field lines string[]

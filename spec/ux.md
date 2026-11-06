@@ -37,7 +37,9 @@ The review follows Vim conventions (netrw, nvim-tree). There is no special diff 
    If there is no other window, it opens a split on the right.
 3. **The current file is the review buffer in the last focused window** of the review tab (not the explorer,
    not a float).
-   - The explorer highlights the row of the current file. No highlight when that window shows another buffer.
+   - The explorer highlights the row of the current file: full-line background (`ReviewCurrent`). No highlight
+     when that window shows another buffer, or when the file's revision is closed. The cursor line wins over it.
+     The explorer cursor does not move to the current file.
    - `]f` / `[f` step from the current file.
 - The stack changes:
   - A rewritten file: its buffer shows the new diff.

@@ -19,7 +19,7 @@ lazy.nvim:
 
 ```lua
 {
-  dir = "~/path/to/neovim-plugin-jj-review", -- or the Git URL of this repo
+  "zamblauskas/neovim-plugin-jj-review",
   config = function()
     require("review").setup()
   end,
@@ -135,6 +135,7 @@ All groups link to standard groups by default. Override them in your color schem
 | `ReviewCount` / `ReviewDone` | `Comment` / `DiagnosticOk` |
 | `ReviewStatusAdded` / `Modified` / `Deleted` / `Renamed` | `Added` / `Changed` / `Removed` / `Special` |
 | `ReviewChangeId` / `ReviewChangeIdRest` | `Special` / `Comment` |
+| `ReviewCurrent` (explorer row of the file in the last focused window) | `Visual` |
 | `ReviewWorkingCopy`, `ReviewHeader`, `ReviewDim`, `ReviewError`, `ReviewFold`, `ReviewDirectory` | see `lua/review/shell/highlights.lua` |
 
 ## Files for the agent

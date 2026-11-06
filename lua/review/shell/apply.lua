@@ -11,7 +11,8 @@ function M.view(buf, ns, view)
   vim.bo[buf].modifiable = false
   vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
   for _, hl in ipairs(view.highlights) do
-    vim.api.nvim_buf_set_extmark(buf, ns, hl.row, hl.col_start, { end_col = hl.col_end, hl_group = hl.group })
+    local opts = hl.line and { line_hl_group = hl.group } or { end_col = hl.col_end, hl_group = hl.group }
+    vim.api.nvim_buf_set_extmark(buf, ns, hl.row, hl.line and 0 or hl.col_start, opts)
   end
 end
 

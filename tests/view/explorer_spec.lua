@@ -113,6 +113,30 @@ describe("view.explorer", function()
     assert.are.same({ { row = 4, col_start = 4, col_end = 6, group = "ReviewStatusAdded" } }, hl)
   end)
 
+  describe("current file", function()
+    ---@param current review.FileKey?
+    ---@return review.Highlight[]
+    local function current_highlights(current)
+      local state = state_with({ type = "ok", revisions = { rev("uxlm", "x") } })
+      state = tbl.with(state, { diffs = { uxlm = { file("added", "a"), file("added", "b") } }, current = current })
+      return vim.tbl_filter(function(h)
+        return h.group == "ReviewCurrent"
+      end, view_of(state).highlights)
+    end
+
+    it("highlights the whole row of the current file", function()
+      assert.are.same(
+        { { row = 5, col_start = 0, col_end = 0, group = "ReviewCurrent", line = true } },
+        current_highlights({ change_id = "uxlmfull", path = "b" })
+      )
+    end)
+
+    it("highlights no row without a current file, or for a file of another revision", function()
+      assert.are.same({}, current_highlights(nil))
+      assert.are.same({}, current_highlights({ change_id = "other", path = "b" }))
+    end)
+  end)
+
   it("hides files of a closed revision", function()
     local state = state_with({ type = "ok", revisions = { rev("uxlm", "x") } })
     state = tbl.with(state, { folds = { uxlmfull = "closed" } })

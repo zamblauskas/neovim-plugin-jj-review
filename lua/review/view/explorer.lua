@@ -326,6 +326,20 @@ local function fit(entry, width)
   return vim.list_extend(vim.list_extend(left, { { string.rep(" ", pad) } }), entry.right)
 end
 
+--- Line highlight for the row of the current file (the review buffer in the last focused window), else none.
+---@param target review.ExplorerTarget?
+---@param current review.FileKey?
+---@param row integer  0-based
+---@return review.Highlight[]
+local function current_highlight(target, current, row)
+  local is_current = target ~= nil
+    and current ~= nil
+    and target.type == "file"
+    and target.change_id == current.change_id
+    and target.path == current.path
+  return is_current and { { row = row, col_start = 0, col_end = 0, group = "ReviewCurrent", line = true } } or {}
+end
+
 ---@param state review.State
 ---@param width integer  -- text columns of the explorer window
 ---@return review.View
@@ -336,6 +350,7 @@ function M.render(state, width)
   for i, entry in ipairs(entries) do
     local text, highlights = row_lib.flatten(fit(entry, width), i - 1)
     table.insert(view.lines, text)
+    vim.list_extend(view.highlights, current_highlight(entry.target, state.current, i - 1))
     vim.list_extend(view.highlights, highlights)
     view.targets[i] = entry.target
   end
