@@ -20,8 +20,30 @@
 
 - `:Review` opens a new tab page. Your other tabs do not change. `:Review` again goes to that tab.
 - Explorer: left split, fixed width.
-- Diff: one file at a time, in the diff window (right). If you close it, the next file opens a new one.
 - `:Review close` closes the tab.
+
+## Windows and buffers
+
+The review follows Vim conventions (netrw, nvim-tree). There is no special diff window.
+
+1. **A review file is a buffer, not a window.**
+   - A review file is one revision at one path. It has one buffer: a scratch buffer (view mode) or the real file
+     buffer (working-copy mode).
+   - The buffer keeps its diff, marks, comments and keymaps in every window and tab, until the review closes.
+   - `gd`, `<C-o>`, `:b`, splits: a review buffer shown again is up to date.
+   - A real file buffer opened by other means (`gd`, `:e`) is a review buffer if its path is a file of the
+     working-copy revision.
+2. **The explorer opens a file in the previous window** (`wincmd p`) of the review tab, and focuses it.
+   If there is no other window, it opens a split on the right.
+3. **The current file is the review buffer in the last focused window** of the review tab (not the explorer,
+   not a float).
+   - The explorer highlights the row of the current file. No highlight when that window shows another buffer.
+   - `]f` / `[f` step from the current file.
+- The stack changes:
+  - A rewritten file: its buffer shows the new diff.
+  - A file that is gone: its buffer is released. A window that shows it gets an empty buffer.
+- `:Review close`: all review buffers are released (scratch buffers wiped; marks and keymaps removed from real
+  buffers).
 
 ## Explorer
 

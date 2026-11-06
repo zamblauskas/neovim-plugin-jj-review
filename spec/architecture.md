@@ -92,9 +92,9 @@ lua/review/
     ids.lua             id port: comment ids
     effects.lua         effect interpreter, render batching
     apply.lua           apply view specs to buffers (namespaces)
-    layout.lua          review tab port (Facade): tab page, diff window
+    layout.lua          review tab port (Facade): tab page, target window for opening a file
     explorer.lua        explorer window port (only owner of its buffer and window)
-    diff.lua            diff port: shows the open file in the diff window, render
+    diff.lua            diff port: shows a review file in a window, renders shown review buffers
     buffers.lua         review buffers by mode: scratch (view), real file (working copy)
     diff_keymaps.lua    diff buffer keymaps → messages
     highlights.lua      highlight groups (default links)
@@ -204,6 +204,70 @@ ids) are fetched again. Old cache entries not in the stack are dropped.
 3. View mode → `LoadContent` (if not cached), then `OpenBuffer` (scratch). Deleted and binary files need no
    content. Working-copy mode → `OpenBuffer` (real file).
 4. `RenderDiff`.
+
+## Planned: windows and buffers
+
+Refactor for the model in [ux.md](ux.md#windows-and-buffers). Replaces `open_file` and the diff window.
+
+### Concepts
+
+- **File key**: `{change_id, path}`. One review file.
+- **Review buffer**: the buffer of a file key in a mode. Core knows the file keys that have a buffer
+  (`state.buffers`); the shell knows the buffer numbers (`shell/buffers.lua`).
+- **Current file**: the file key of the review buffer in the last focused window of the review tab. The shell
+  observes it (Observer); core stores it (`state.current`).
+
+### State
+
+| Field | Before | After |
+|---|---|---|
+| `open_file` `{change_id, path, commit_id?, mode?}` | the file the plugin last showed | removed |
+| `buffers` `table<key, {change_id, path, commit_id, mode}>` | — | review files with a buffer, and the commit and mode of their text |
+| `current` `{change_id, path}?` | — | reported by the shell; nil: no review buffer in the focused window |
+
+### Messages
+
+| Message | Source | Core |
+|---|---|---|
+| `FileOpened{change_id, path}` | explorer `<CR>`, `]f` / `[f` | `PrepareBuffer` (after `LoadContent` if needed), then `ShowBuffer` |
+| `FocusChanged{file?, path?}` (new) | shell Observer: `WinEnter`, `BufWinEnter` in the review tab | `file`: a review buffer → `current = file`. `path`: a real file, not a review buffer → adopt it if it is a file of the working-copy revision (`PrepareBuffer`), else `current = nil`. `RenderExplorer` if `current` changed |
+| `FileStepped{offset}` | `]f` / `[f` | steps from `current` (was: `open_file`) |
+
+### Effects
+
+`OpenBuffer` is split in two commands (Command pattern): make the buffer, and put it in a window.
+
+| Effect | Shell |
+|---|---|
+| `PrepareBuffer{change_id, path, mode, lines?, file_path?}` (new) | create or update the buffer, register it, set keymaps. Every window that shows it keeps its cursor and scroll |
+| `ShowBuffer{change_id, path, cursor_line}` (new) | put the buffer in the target window and focus it |
+| `ReleaseBuffer{change_id, path}` (new) | release one buffer; windows that show it get an empty buffer |
+| `RenderDiff` | renders every registered buffer (was: the open file only). Batched once per tick |
+| `OpenBuffer`, `CloseDiff` | removed |
+
+**Target window** (`shell/layout.lua`): the current window if it is in the review tab and is not the explorer;
+else the previous window (`wincmd p`) if it qualifies; else a new split on the right of the explorer.
+`layout.diff_window` and `buffers.release_real_except` are removed.
+
+### Flows
+
+- **Open a file**: `FileOpened` → `PrepareBuffer` → `ShowBuffer` → the Observer reports `FocusChanged` →
+  `current` → `RenderExplorer`. Core does not set `current` on open: one source for it (the Observer).
+- **Stack change** (`core/review_buffers.follow`, was `open_file.follow`), for each entry of `state.buffers`:
+  rewritten → `LoadContent` (view mode) and `PrepareBuffer`; gone → `ReleaseBuffer`; mode changed → `PrepareBuffer`
+  in the new mode, `ReleaseBuffer` of the old one, windows that showed the old buffer show the new one.
+- **Close**: release all buffers (no change).
+
+### Modules
+
+| Module | Change |
+|---|---|
+| `core/open_file.lua` | → `core/review_buffers.lua`: prepare, follow and release over `state.buffers` |
+| `core/handlers/ui.lua` | `FileOpened`, `FileStepped` on `current`; new `FocusChanged` |
+| `shell/focus.lua` (new) | Observer: autocmds in the review tab → `FocusChanged` (sent only when it changes) |
+| `shell/buffers.lua` | `identify(buf)` → file key; `release(key)`; no `release_real_except` |
+| `shell/layout.lua` | `target_window()`; no diff window |
+| `shell/diff.lua` | `prepare`, `show`, `release`; render all registered buffers |
 
 ## JJ calls
 

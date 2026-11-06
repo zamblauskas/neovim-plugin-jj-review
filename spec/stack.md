@@ -44,9 +44,9 @@ No refresh loop: all JJ reads by the plugin use `--ignore-working-copy`. They ne
 | Squash root into trunk | JJ refuses (trunk is immutable). |
 | New revision on a middle revision (sibling) | Not linear → error. |
 | Abandon a revision | It disappears. Marks stay in the file. |
-| Open revision disappears | Close the diff (empty buffer in the diff window). Explorer cursor goes to the nearest previous (older) revision still in the stack, else the newest. |
-| Open file disappears from its revision | Close the diff. Explorer cursor goes to the revision row. |
-| Open revision is rewritten | Show the new text of the file. Cursor and scroll stay. |
+| Open revision disappears | Release the buffers of its files; windows that show them get an empty buffer. Explorer cursor goes to the nearest previous (older) revision still in the stack, else the newest. |
+| Open file disappears from its revision | Release its buffer; windows that show it get an empty buffer. Explorer cursor goes to the revision row. |
+| Open revision is rewritten | Every shown buffer of its files gets the new text and diff. Cursor and scroll stay. |
 | Refresh fails (jj error) | Keep the last stack. Show a warning. |
 
 ## Modes
