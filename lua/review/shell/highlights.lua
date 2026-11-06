@@ -8,6 +8,13 @@ local M = {}
 local DIMMED = { ReviewAddedReviewed = "DiffAdd", ReviewRemovedReviewed = "DiffDelete" }
 local DIM_ALPHA = 0.5
 
+--- Changed tokens of a paired line: the background of the base group, mixed with the foreground of the accent group.
+local TEXT = {
+  ReviewAddedText = { base = "DiffAdd", accent = "Added" },
+  ReviewRemovedText = { base = "DiffDelete", accent = "Removed" },
+}
+local TEXT_ALPHA = 0.5
+
 local LINKS = {
   ReviewHeader = "Title",
   ReviewDim = "Comment",
@@ -43,12 +50,28 @@ local function dimmed(base)
   return { fg = hl.fg, bg = color.blend(hl.bg, normal.bg, DIM_ALPHA), default = true }
 end
 
+--- Stronger version of `base`. A link to `DiffText` if a color is missing.
+---@param base string
+---@param accent string
+---@return vim.api.keyset.highlight
+local function stronger(base, accent)
+  local hl = vim.api.nvim_get_hl(0, { name = base, link = false })
+  local fg = vim.api.nvim_get_hl(0, { name = accent, link = false }).fg
+  if not (hl.bg and fg) then
+    return { link = "DiffText", default = true }
+  end
+  return { fg = hl.fg, bg = color.blend(fg, hl.bg, TEXT_ALPHA), default = true }
+end
+
 function M.setup()
   for group, target in pairs(LINKS) do
     vim.api.nvim_set_hl(0, group, { link = target, default = true })
   end
   for group, base in pairs(DIMMED) do
     vim.api.nvim_set_hl(0, group, dimmed(base))
+  end
+  for group, spec in pairs(TEXT) do
+    vim.api.nvim_set_hl(0, group, stronger(spec.base, spec.accent))
   end
 end
 

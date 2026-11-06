@@ -16,11 +16,15 @@ end
 ---@return string[]
 local function outline(rendered)
   return vim.tbl_map(function(mark)
-    if mark.opts.line_hl_group then
+    if mark.opts.hl_eol then
       return "+" .. mark.row
+    elseif mark.opts.hl_group then
+      return ("~%d:%d-%d"):format(mark.row, mark.col, mark.opts.end_col)
     end
     local texts = vim.tbl_map(function(virt_line)
-      return vim.trim(virt_line[2][1])
+      return vim.trim(table.concat(vim.tbl_map(function(chunk)
+        return chunk[2] == "ReviewRemovedText" and "[" .. chunk[1] .. "]" or chunk[1]
+      end, vim.list_slice(virt_line, 2))))
     end, mark.opts.virt_lines)
     return "-" .. mark.row .. (mark.opts.virt_lines_above and "^ " or "_ ") .. table.concat(texts, ",")
   end, rendered.extmarks)
@@ -36,6 +40,7 @@ local function input(fields)
     marks = {},
     dim = true,
     show_removed = true,
+    inline = true,
     comments = {},
     icons = config.defaults.icons,
   }, fields or {})
@@ -44,9 +49,43 @@ end
 local INPUT = input()
 
 describe("view.diff", function()
+  it("highlights the changed tokens of a removed line and the added line that replaced it", function()
+    local f = file("@@ -1,2 +1,2 @@\n-f(a, b)\n+f(a, c)\n x\n")
+    assert.are.same({ "-0^ f(a, [b])", "+0", "~0:5-6" }, outline(view.render(f, INPUT)))
+  end)
+
+  it("pairs block lines with added lines by position and leaves the rest plain", function()
+    local f = file("@@ -1,3 +1,2 @@\n-f(a)\n-g(b)\n+f(c)\n x\n")
+    assert.are.same({ "-0^ f([a]),g(b)", "+0", "~0:2-3" }, outline(view.render(f, INPUT)))
+  end)
+
+  it("shows no tokens for a rewritten line, a dimmed reviewed line, or when inline is off", function()
+    local f = file("@@ -1,2 +1,2 @@\n-f(a, b)\n+totally(other)\n x\n")
+    assert.are.same({ "-0^ f(a, b)", "+0" }, outline(view.render(f, INPUT)))
+    f = file("@@ -1,2 +1,2 @@\n-f(a, b)\n+f(a, b, c)\n x\n")
+    assert.are.same({ "-0^ f(a, b)", "+0" }, outline(view.render(f, input({ inline = false }))))
+    f = keys.annotate(f)
+    local marks = {}
+    for _, key in ipairs(keys.of_file(f)) do
+      marks[key] = { created = "t" }
+    end
+    assert.are.same({ "-0^ f(a, b)", "+0" }, outline(view.render(f, input({ marks = marks }))))
+  end)
+
   it("highlights added lines and draws removed blocks with their placement", function()
     local f = file("@@ -1,7 +1,8 @@\n a\n-b\n+B\n c\n d\n e\n f\n-g\n+G\n+h\n")
     assert.are.same({ "-1^ b", "+1", "-6^ g", "+6", "+7" }, outline(view.render(f, INPUT)))
+  end)
+
+  it("highlights an added line as a whole-line range, so token ranges can paint over it", function()
+    local f = file("@@ -1,1 +1,2 @@\n a\n+b\n")
+    local mark = view.render(f, input({ line_count = 2 })).extmarks[1]
+    assert.are.same({ row = 1, end_row = 2, end_col = 0, hl_eol = true }, {
+      row = mark.row,
+      end_row = mark.opts.end_row,
+      end_col = mark.opts.end_col,
+      hl_eol = mark.opts.hl_eol,
+    })
   end)
 
   it("draws no removed blocks when they are hidden", function()
@@ -78,8 +117,8 @@ describe("view.diff", function()
     assert.are.same("   ", virt_lines[1][1][1])
     assert.are.same("    x", virt_lines[1][2][1]:match("^(.-)%s*$"))
     assert.are.same("ab  c", virt_lines[2][2][1]:match("^(.-)%s*$"))
-    assert.are.same("ReviewRemoved", virt_lines[1][2][2])
-    assert.are.same(400, vim.fn.strdisplaywidth(virt_lines[1][2][1]))
+    assert.are.same({ "ReviewRemoved", "ReviewRemoved" }, { virt_lines[1][2][2], virt_lines[1][3][2] })
+    assert.are.same(400, vim.fn.strdisplaywidth(virt_lines[1][2][1] .. virt_lines[1][3][1]))
   end)
 
   describe("review state", function()
@@ -97,12 +136,12 @@ describe("view.diff", function()
       local added = render({ [a] = { created = "t" } })[2].opts
       assert.are.same(
         { "✓", "ReviewSign", "ReviewAddedReviewed" },
-        { added.sign_text, added.sign_hl_group, added.line_hl_group }
+        { added.sign_text, added.sign_hl_group, added.hl_group }
       )
     end)
 
     it("keeps the normal group when dim is off", function()
-      assert.are.same("ReviewAdded", render({ [a] = { created = "t" } }, false)[2].opts.line_hl_group)
+      assert.are.same("ReviewAdded", render({ [a] = { created = "t" } }, false)[2].opts.hl_group)
     end)
 
     it("shows the block state in the gutter of its first line", function()

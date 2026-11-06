@@ -93,6 +93,7 @@ require("review").setup({
   explorer_width = 40,
   max_parallel_jj = 4, -- jj diff calls at the same time
   dim_reviewed = true, -- dim reviewed lines
+  inline_diff = true, -- highlight the changed tokens of a replaced line
   keymaps = { -- set a key to false to not map it
     open = "<leader>jvv",
     close = "<leader>jvq",
@@ -132,6 +133,7 @@ All groups link to standard groups by default. Override them in your color schem
 |---|---|
 | `ReviewAdded` / `ReviewRemoved` | `DiffAdd` / `DiffDelete` |
 | `ReviewAddedReviewed` / `ReviewRemovedReviewed` | 50% blend with the `Normal` background |
+| `ReviewAddedText` / `ReviewRemovedText` (changed tokens) | background mixed with the `Added` / `Removed` foreground |
 | `ReviewSign` | `DiagnosticOk` |
 | `ReviewComment` / `ReviewCommentOutdated` | `DiagnosticInfo` / `DiagnosticWarn` |
 | `ReviewCount` / `ReviewDone` | `Comment` / `DiagnosticOk` |

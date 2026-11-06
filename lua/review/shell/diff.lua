@@ -113,6 +113,7 @@ local function render_file(state, entry, placements)
     marks = state.marks,
     dim = state.config.dim_reviewed,
     show_removed = state.show_removed,
+    inline = state.config.inline_diff,
     comments = comments.in_file(placements, entry.file.change_id, entry.file.path),
     icons = state.config.icons,
   })

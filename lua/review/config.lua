@@ -7,6 +7,7 @@ local M = {}
 ---@field explorer_width integer
 ---@field max_parallel_jj integer
 ---@field dim_reviewed boolean
+---@field inline_diff boolean
 ---@field keymaps review.KeymapConfig
 ---@field icons review.IconConfig
 
@@ -43,6 +44,7 @@ M.defaults = {
   explorer_width = 40,
   max_parallel_jj = 4,
   dim_reviewed = true,
+  inline_diff = true,
   keymaps = {
     open = "<leader>jvv",
     close = "<leader>jvq",
@@ -97,6 +99,7 @@ local function validate(config)
   validate_positive_integer("explorer_width", config.explorer_width)
   validate_positive_integer("max_parallel_jj", config.max_parallel_jj)
   vim.validate("dim_reviewed", config.dim_reviewed, "boolean")
+  vim.validate("inline_diff", config.inline_diff, "boolean")
   for name, key in pairs(config.keymaps) do
     vim.validate("keymaps." .. name, key, function(v)
       return type(v) == "string" or v == false

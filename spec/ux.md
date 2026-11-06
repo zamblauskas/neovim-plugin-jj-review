@@ -109,12 +109,17 @@ Visual states:
 | Removed block, not reviewed | Red virtual lines above the next real line |
 | Removed block, reviewed | Red virtual lines dimmed, `✓` in the gutter of the first line |
 | Removed block, partly reviewed | `3/4` in the gutter of the first line |
+| Replaced line | Changed tokens of the removed line and of the added line get a stronger background |
 | Comment | Virtual lines below the last line of the anchor, `💬` prefix, from the left edge with the gutter |
 | Outdated comment | Virtual lines at the original line number, `⚠ outdated` prefix, other color |
 
 Dim can be turned off in config (`dim_reviewed = false`). Dim colors are a 50% blend of `DiffAdd` / `DiffDelete`
 with the `Normal` background. Removed lines start at the left edge with a gutter, so their text aligns with the
 buffer text.
+
+Intra-line diff (`inline_diff = true`): the k-th line of a removed block pairs with the k-th added line right after
+it. Tokens are word runs, whitespace runs and single characters. A line with more than 60% of its tokens changed is
+rewritten: no token highlight. Dimmed reviewed lines show no token highlight.
 
 Placement rules:
 - A removed block attaches to the next real line.
