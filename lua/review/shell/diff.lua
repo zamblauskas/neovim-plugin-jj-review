@@ -37,11 +37,28 @@ function M.release(e)
 end
 
 --- Columns before the text (signs, numbers, folds) in the first window that shows `buf`. 0 if none does.
+--- A statuscolumn gets its width on a redraw of the window: the window is redrawn (flushed) before the measure.
 ---@param buf integer
 ---@return integer
 local function gutter_width(buf)
   local win = vim.fn.win_findbuf(buf)[1]
-  return win and vim.fn.getwininfo(win)[1].textoff or 0
+  if not win then
+    return 0
+  end
+  vim.api.nvim__redraw({ win = win, valid = false, flush = true })
+  return vim.fn.getwininfo(win)[1].textoff
+end
+
+--- Gutter width each buffer was last drawn with. A statuscolumn gets its width on the first redraw of the
+--- window, after the draw: the next tick compares, and draws again when it changed (self-correcting).
+---@type table<integer, integer>
+local drawn_gutter = {}
+
+---@return boolean
+local function gutter_changed()
+  return vim.iter(pairs(drawn_gutter)):any(function(buf, width)
+    return vim.api.nvim_buf_is_valid(buf) and gutter_width(buf) ~= width
+  end)
 end
 
 --- Sign column on in each window of the buffer. Runs before the gutter is measured, so the measure includes it.
@@ -88,10 +105,11 @@ local function render_file(state, entry, placements)
     return
   end
   set_signcolumn(buf)
+  drawn_gutter[buf] = gutter_width(buf)
   local rendered = view.render(file, {
     line_count = vim.api.nvim_buf_line_count(buf),
     tabstop = vim.bo[buf].tabstop,
-    gutter_width = gutter_width(buf),
+    gutter_width = drawn_gutter[buf],
     marks = state.marks,
     dim = state.config.dim_reviewed,
     comments = comments.in_file(placements, entry.file.change_id, entry.file.path),
@@ -101,13 +119,20 @@ local function render_file(state, entry, placements)
   set_topfill(buf, rendered.topfill)
 end
 
---- Draw the diff of every review buffer.
----@param state review.State
-function M.render(state)
+--- Draw the diff of every review buffer. Draws again on the next tick when a gutter changed after the draw.
+---@param app review.App
+function M.render(app)
+  local state = app.state()
   local placements = comments.place(state)
+  drawn_gutter = {}
   for _, entry in pairs(state.buffers) do
     render_file(state, entry, placements)
   end
+  vim.schedule(function()
+    if app.state().open and gutter_changed() then
+      M.render(app)
+    end
+  end)
 end
 
 --- Release all review buffers: wipe scratch buffers; remove marks and keymaps from real buffers.

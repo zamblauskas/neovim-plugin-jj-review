@@ -268,7 +268,7 @@ local function diff_handlers(ports)
       vim.api.nvim_win_set_cursor(0, { e.line, 0 })
     end,
     RenderDiff = schedule.once_per_tick(function(_, app)
-      ports.diff.render(app.state())
+      ports.diff.render(app)
     end),
   }
 end

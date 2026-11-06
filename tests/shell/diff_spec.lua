@@ -96,10 +96,70 @@ describe("shell.diff", function()
       buffers = { ["abc/f"] = { file = key("abc", "f"), commit_id = "c1", mode = "view" } },
     })
     open(key("abc", "f"), { "y", "z" }, 1)
-    diff.render(state)
+    diff.render({
+      state = function()
+        return state
+      end,
+      dispatch = app.dispatch,
+    })
     local marks = vim.api.nvim_buf_get_extmarks(0, -1, 0, -1, { details = true })
     assert.are.same(2, #marks)
     assert.are.same(1, vim.fn.winsaveview().topfill)
+  end)
+
+  it("measures a statuscolumn that is not drawn yet", function()
+    local rev =
+      { change_id = "abc", commit_id = "c1", parents = {}, empty = false, working_copy = false, description = "" }
+    local file =
+      require("review.parse.diff").parse("diff --git a/f b/f\n--- a/f\n+++ b/f\n@@ -1,2 +1,2 @@\n-x\n+y\n z\n")[1]
+    local state = tbl.with(app.state(), {
+      stack = { type = "ok", revisions = { rev } },
+      diffs = { c1 = { file } },
+      buffers = { ["abc/f"] = { file = key("abc", "f"), commit_id = "c1", mode = "view" } },
+    })
+    open(key("abc", "f"), { "y", "z" }, 1)
+    vim.wo.statuscolumn = "XXXXXXXXXX%l "
+    diff.render({
+      state = function()
+        return state
+      end,
+      dispatch = app.dispatch,
+    })
+    local textoff = vim.fn.getwininfo(vim.fn.win_getid())[1].textoff
+    vim.wo.statuscolumn = ""
+    local mark = vim.api.nvim_buf_get_extmarks(0, -1, 0, -1, { details = true })[1]
+    assert.is_true(textoff > 10)
+    assert.are.same(textoff, vim.fn.strdisplaywidth(mark[4].virt_lines[1][1][1]))
+  end)
+
+  it("draws again on the next tick when the gutter changed after the draw", function()
+    local rev =
+      { change_id = "abc", commit_id = "c1", parents = {}, empty = false, working_copy = false, description = "" }
+    local file =
+      require("review.parse.diff").parse("diff --git a/f b/f\n--- a/f\n+++ b/f\n@@ -1,2 +1,2 @@\n-x\n+y\n z\n")[1]
+    local state = tbl.with(app.state(), {
+      stack = { type = "ok", revisions = { rev } },
+      diffs = { c1 = { file } },
+      buffers = { ["abc/f"] = { file = key("abc", "f"), commit_id = "c1", mode = "view" } },
+    })
+    open(key("abc", "f"), { "y", "z" }, 1)
+    vim.wo.number = false
+    diff.render({
+      state = function()
+        return state
+      end,
+      dispatch = app.dispatch,
+    })
+    local function gutter()
+      local mark = vim.api.nvim_buf_get_extmarks(0, -1, 0, -1, { details = true })[1]
+      return vim.fn.strdisplaywidth(mark[4].virt_lines[1][1][1])
+    end
+    local before = gutter()
+    vim.wo.number = true
+    vim.wait(50, function()
+      return gutter() ~= before
+    end)
+    assert.are.same(vim.fn.getwininfo(vim.fn.win_getid())[1].textoff, gutter())
   end)
 
   it("dispatches FileStepped on ]R and [R", function()
