@@ -44,12 +44,19 @@ local function gutter_width(buf)
   return win and vim.fn.getwininfo(win)[1].textoff or 0
 end
 
---- Sign column on, and virtual lines above line 1 in each window that shows the top of the buffer.
+--- Sign column on in each window of the buffer. Runs before the gutter is measured, so the measure includes it.
 ---@param buf integer
----@param topfill integer
-local function set_windows(buf, topfill)
+local function set_signcolumn(buf)
   for _, win in ipairs(vim.fn.win_findbuf(buf)) do
     vim.wo[win][0].signcolumn = "yes:1"
+  end
+end
+
+--- Virtual lines above line 1 in each window that shows the top of the buffer.
+---@param buf integer
+---@param topfill integer
+local function set_topfill(buf, topfill)
+  for _, win in ipairs(vim.fn.win_findbuf(buf)) do
     vim.api.nvim_win_call(win, function()
       if topfill > 0 and vim.fn.line("w0") == 1 then
         vim.fn.winrestview({ topfill = topfill })
@@ -80,6 +87,7 @@ local function render_file(state, entry, placements)
   if not (buf and file) or vim.bo[buf].modified then
     return
   end
+  set_signcolumn(buf)
   local rendered = view.render(file, {
     line_count = vim.api.nvim_buf_line_count(buf),
     tabstop = vim.bo[buf].tabstop,
@@ -90,7 +98,7 @@ local function render_file(state, entry, placements)
     icons = state.config.icons,
   })
   apply.extmarks(buf, buffers.ns, rendered.extmarks)
-  set_windows(buf, rendered.topfill)
+  set_topfill(buf, rendered.topfill)
 end
 
 --- Draw the diff of every review buffer.
