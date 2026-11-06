@@ -28,6 +28,7 @@ local M = {}
 ---| review.Msg.FileSaved
 ---| review.Msg.EditRequested
 ---| review.Msg.CommandFailed
+---| review.Msg.FocusChanged
 
 ---@class review.Msg.Opened
 ---@field type "Opened"
@@ -81,10 +82,19 @@ local M = {}
 ---@field change_id string
 ---@field path string
 
---- Open the file `offset` places after the open file, in the same revision (explorer order).
+--- Open the file `offset` places after the file `path`, in the same revision (explorer order).
 ---@class review.Msg.FileStepped
 ---@field type "FileStepped"
+---@field change_id string
+---@field path string
 ---@field offset integer
+
+--- The focused window of the review tab shows another buffer.
+--- `file`: a review buffer. `path`: a real file that is not a review buffer (absolute). Neither: another buffer.
+---@class review.Msg.FocusChanged
+---@field type "FocusChanged"
+---@field file? review.FileKey
+---@field path? string
 
 ---@class review.Msg.StoreLoaded
 ---@field type "StoreLoaded"
@@ -221,10 +231,19 @@ function M.content_loaded(generation, commit_id, path, lines)
   return { type = "ContentLoaded", generation = generation, commit_id = commit_id, path = path, lines = lines }
 end
 
+---@param change_id string
+---@param path string
 ---@param offset integer
 ---@return review.Msg.FileStepped
-function M.file_stepped(offset)
-  return { type = "FileStepped", offset = offset }
+function M.file_stepped(change_id, path, offset)
+  return { type = "FileStepped", change_id = change_id, path = path, offset = offset }
+end
+
+---@param file? review.FileKey
+---@param path? string
+---@return review.Msg.FocusChanged
+function M.focus_changed(file, path)
+  return { type = "FocusChanged", file = file, path = path }
 end
 
 ---@return review.Msg.StoreLoaded

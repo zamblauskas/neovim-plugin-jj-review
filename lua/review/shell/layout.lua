@@ -2,6 +2,7 @@
 -- The only owner of the tab and diff window handles.
 
 local explorer = require("review.shell.explorer")
+local focus = require("review.shell.focus")
 
 local M = {}
 
@@ -29,6 +30,7 @@ function M.open(app)
     create_tab()
   end
   explorer.open(app)
+  focus.start(app, (assert(ui.tab, "review tab")))
 end
 
 --- Close the review tab. If it is the only tab, close the explorer only.
@@ -36,6 +38,7 @@ function M.close()
   if tab_is_valid() and #vim.api.nvim_list_tabpages() > 1 then
     vim.cmd.tabclose(vim.api.nvim_tabpage_get_number((assert(ui.tab, "review tab"))))
   end
+  focus.stop()
   explorer.close()
   ui = {}
 end

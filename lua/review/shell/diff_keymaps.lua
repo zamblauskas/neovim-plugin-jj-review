@@ -6,11 +6,7 @@ local msg = require("review.core.msg")
 
 local M = {}
 
----@class review.BufferFile
----@field change_id string
----@field path string
-
----@param file review.BufferFile
+---@param file review.FileKey
 ---@param fields table
 ---@return review.Msg
 local function toggle(file, fields)
@@ -19,7 +15,7 @@ local function toggle(file, fields)
 end
 
 --- Normal mode toggle actions by config key name.
----@param file review.BufferFile
+---@param file review.FileKey
 ---@return table<string, fun(): review.Msg>
 local function toggle_actions(file)
   return {
@@ -36,7 +32,7 @@ local function toggle_actions(file)
 end
 
 --- Comment actions by config key name.
----@param file review.BufferFile
+---@param file review.FileKey
 ---@return table<string, fun(): review.Msg>
 local function comment_actions(file)
   local function at_cursor(type)
@@ -55,7 +51,7 @@ local function comment_actions(file)
 end
 
 --- Navigation actions by config key name.
----@param file review.BufferFile
+---@param file review.FileKey
 ---@return table<string, fun(): review.Msg>
 local function step_actions(file)
   local function unreviewed(offset)
@@ -65,7 +61,7 @@ local function step_actions(file)
   end
   local function other_file(offset)
     return function()
-      return msg.file_stepped(offset)
+      return msg.file_stepped(file.change_id, file.path, offset)
     end
   end
   return {
@@ -77,7 +73,7 @@ local function step_actions(file)
 end
 
 --- The selected line range as target fields. Leaves visual mode.
----@param file review.BufferFile
+---@param file review.FileKey
 ---@return table
 local function visual_range(file)
   local a, b = vim.fn.line("v"), vim.fn.line(".")
@@ -86,7 +82,7 @@ local function visual_range(file)
 end
 
 --- Visual mode actions by config key name.
----@param file review.BufferFile
+---@param file review.FileKey
 ---@return table<string, fun(): review.Msg>
 local function visual_actions(file)
   return {
@@ -121,7 +117,7 @@ end
 
 --- Set the review keymaps on `buf`. Returns them, so they can be deleted.
 ---@param buf integer
----@param file review.BufferFile
+---@param file review.FileKey
 ---@param app review.App
 ---@return review.MappedKey[]
 function M.set(buf, file, app)

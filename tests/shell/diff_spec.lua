@@ -88,7 +88,7 @@ describe("shell.diff", function()
   it("dispatches FileStepped on ]R and [R", function()
     diff.open(effect.open_buffer("abc", "a.txt", { "x" }, 1), app)
     vim.api.nvim_feedkeys("]R[R", "x", false)
-    assert.are.same({ msg.file_stepped(1), msg.file_stepped(-1) }, app.messages)
+    assert.are.same({ msg.file_stepped("abc", "a.txt", 1), msg.file_stepped("abc", "a.txt", -1) }, app.messages)
   end)
 
   it("dispatches toggles for the line, the block, the file and a visual range", function()

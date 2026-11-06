@@ -339,22 +339,24 @@ describe("core.update", function()
     end)
 
     it("steps to the next and previous file in explorer order", function()
-      local state = update(loaded_state(), msg.file_opened("b", "a.txt"))
-      local next_state, effects = update(state, msg.file_stepped(1))
+      local next_state, effects = update(loaded_state(), msg.file_stepped("b", "a.txt", 1))
       assert.are.same({ change_id = "b", path = "d.txt", commit_id = "b", mode = "view" }, next_state.open_file)
       assert.are.same({ "OpenBuffer", "RenderDiff" }, types(effects))
-      assert.are.same("a.txt", update(next_state, msg.file_stepped(-1)).open_file.path)
+      assert.are.same(
+        { effect.load_content(1, "/repo", "b", "a.txt") },
+        select(2, update(next_state, msg.file_stepped("b", "d.txt", -1)))
+      )
     end)
 
     it("does not step past the first or the last file", function()
-      local state = update(loaded_state(), msg.file_opened("b", "d.txt"))
-      local next_state, effects = update(state, msg.file_stepped(1))
+      local state = loaded_state()
+      local next_state, effects = update(state, msg.file_stepped("b", "d.txt", 1))
       assert.are.equal(state, next_state)
       assert.are.same({}, effects)
     end)
 
-    it("does not step without an open file", function()
-      local _, effects = update(loaded_state(), msg.file_stepped(1))
+    it("does not step from an unknown file", function()
+      local _, effects = update(loaded_state(), msg.file_stepped("b", "gone.txt", 1))
       assert.are.same({}, effects)
     end)
 
@@ -396,6 +398,30 @@ describe("core.update", function()
       local next_state, effects = update(state, msg.file_opened("b", "nope"))
       assert.are.equal(state, next_state)
       assert.are.same({}, effects)
+    end)
+  end)
+
+  describe("focus", function()
+    local file = { change_id = "b", path = "a.txt" }
+
+    it("stores the focused review file and renders the explorer", function()
+      local state, effects = update(opened_state(), msg.focus_changed(file))
+      assert.are.same(file, state.current)
+      assert.are.same({ "RenderExplorer" }, types(effects))
+    end)
+
+    it("does nothing when the focused file is the same", function()
+      local state = update(opened_state(), msg.focus_changed(file))
+      local next_state, effects = update(state, msg.focus_changed({ change_id = "b", path = "a.txt" }))
+      assert.are.equal(state, next_state)
+      assert.are.same({}, effects)
+    end)
+
+    it("clears the current file when another buffer is focused", function()
+      local state = update(opened_state(), msg.focus_changed(file))
+      local next_state, effects = update(state, msg.focus_changed(nil, "/elsewhere/x.lua"))
+      assert.is_nil(next_state.current)
+      assert.are.same({ "RenderExplorer" }, types(effects))
     end)
   end)
 

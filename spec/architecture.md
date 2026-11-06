@@ -231,7 +231,7 @@ Refactor for the model in [ux.md](ux.md#windows-and-buffers). Replaces `open_fil
 |---|---|---|
 | `FileOpened{change_id, path}` | explorer `<CR>`, `]f` / `[f` | `PrepareBuffer` (after `LoadContent` if needed), then `ShowBuffer` |
 | `FocusChanged{file?, path?}` (new) | shell Observer: `WinEnter`, `BufWinEnter` in the review tab | `file`: a review buffer → `current = file`. `path`: a real file, not a review buffer → adopt it if it is a file of the working-copy revision (`PrepareBuffer`), else `current = nil`. `RenderExplorer` if `current` changed |
-| `FileStepped{offset}` | `]f` / `[f` | steps from `current` (was: `open_file`) |
+| `FileStepped{change_id, path, offset}` | `]f` / `[f` (buffer-local keys know their file) | steps from that file (was: `open_file`) |
 
 ### Effects
 
@@ -263,7 +263,7 @@ else the previous window (`wincmd p`) if it qualifies; else a new split on the r
 | Module | Change |
 |---|---|
 | `core/open_file.lua` | → `core/review_buffers.lua`: prepare, follow and release over `state.buffers` |
-| `core/handlers/ui.lua` | `FileOpened`, `FileStepped` on `current`; new `FocusChanged` |
+| `core/handlers/ui.lua` | `FileStepped` from the file of the key; new `FocusChanged` |
 | `shell/focus.lua` (new) | Observer: autocmds in the review tab → `FocusChanged` (sent only when it changes) |
 | `shell/buffers.lua` | `identify(buf)` → file key; `release(key)`; no `release_real_except` |
 | `shell/layout.lua` | `target_window()`; no diff window |

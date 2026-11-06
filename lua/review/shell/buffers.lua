@@ -12,6 +12,7 @@ M.ns = vim.api.nvim_create_namespace("review.diff")
 ---@class review.ReviewBuffer
 ---@field buf integer
 ---@field mode review.Mode
+---@field file review.FileKey
 ---@field keymaps review.MappedKey[]
 
 ---@type table<string, review.ReviewBuffer>  by key
@@ -89,8 +90,8 @@ function M.acquire(e, app)
   local entry = registry[key]
   if not (entry and vim.api.nvim_buf_is_valid(entry.buf)) then
     local buf = KINDS[e.mode].create(e)
-    entry =
-      { buf = buf, mode = e.mode, keymaps = diff_keymaps.set(buf, { change_id = e.change_id, path = e.path }, app) }
+    local file = { change_id = e.change_id, path = e.path }
+    entry = { buf = buf, mode = e.mode, file = file, keymaps = diff_keymaps.set(buf, file, app) }
     registry[key] = entry
   end
   KINDS[e.mode].update(entry.buf, e)
@@ -105,6 +106,16 @@ end
 function M.find(mode, change_id, path)
   local entry = registry[key_of(mode, change_id, path)]
   return (entry and vim.api.nvim_buf_is_valid(entry.buf)) and entry.buf or nil
+end
+
+--- File of a registered buffer, or nil.
+---@param buf integer
+---@return review.FileKey?
+function M.identify(buf)
+  local entry = vim.iter(vim.tbl_values(registry)):find(function(e)
+    return e.buf == buf
+  end)
+  return entry and entry.file
 end
 
 --- Release working-copy buffers other than `keep` (they left the review).

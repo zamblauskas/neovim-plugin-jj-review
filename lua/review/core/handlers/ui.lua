@@ -54,13 +54,30 @@ end
 ---@param msg review.Msg.FileStepped
 ---@return review.State, review.Effect[]
 function M.FileStepped(state, msg)
-  local open = state.open_file
-  local rev = open and lookup.revision(state, open.change_id)
-  local path = open and rev and stepped_path(state, rev, open.path, msg.offset)
+  local rev = lookup.revision(state, msg.change_id)
+  local path = rev and stepped_path(state, rev, msg.path, msg.offset)
   if not (rev and path) then
     return state, {}
   end
   return M.FileOpened(state, messages.file_opened(rev.change_id, path))
+end
+
+---@param a review.FileKey?
+---@param b review.FileKey?
+---@return boolean
+local function same_file(a, b)
+  return (a and a.change_id .. "/" .. a.path) == (b and b.change_id .. "/" .. b.path)
+end
+
+---@param state review.State
+---@param msg review.Msg.FocusChanged
+---@return review.State, review.Effect[]
+function M.FocusChanged(state, msg)
+  if same_file(state.current, msg.file) then
+    return state, {}
+  end
+  local next_state = msg.file and tbl.with(state, { current = msg.file }) or tbl.without(state, "current")
+  return next_state, { effect.render_explorer() }
 end
 
 --- Show the loaded content only if it is still for the open file.

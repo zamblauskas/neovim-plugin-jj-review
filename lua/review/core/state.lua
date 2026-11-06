@@ -22,6 +22,12 @@ local M = {}
 ---@field marks_loaded boolean         -- the store was read at least once
 ---@field contents table<string, table<string, string[]>>  -- new text lines by commit id, then path
 ---@field open_file? review.OpenFile    -- file in the diff window
+---@field current? review.FileKey      -- review file in the last focused window (reported by the shell)
+
+--- One review file: a revision at a path.
+---@class review.FileKey
+---@field change_id string
+---@field path string
 
 ---@class review.OpenFile
 ---@field change_id string
