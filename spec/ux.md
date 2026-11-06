@@ -30,7 +30,8 @@ The review follows Vim conventions (netrw, nvim-tree). There is no special diff 
    - A review file is one revision at one path. It has one buffer: a scratch buffer (view mode) or the real file
      buffer (working-copy mode).
    - The buffer keeps its diff, marks, comments and keymaps in every window and tab, until the review closes.
-   - `gd`, `<C-o>`, `:b`, splits: a review buffer shown again is up to date.
+   - `gd`, `<C-o>`, `:b`, splits: a review buffer shown again is up to date. The diff is drawn again when a
+     buffer gets a window (`BufWinEnter`): the gutter of a hidden buffer has no width.
    - A real file buffer opened by other means (`gd`, `:e`) is a review buffer if its path is a file of the
      working-copy revision.
 2. **The explorer opens a file in the previous window** (`wincmd p`) of the review tab, and focuses it.

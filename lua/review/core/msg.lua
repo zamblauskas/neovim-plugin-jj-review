@@ -30,6 +30,7 @@ local M = {}
 ---| review.Msg.EditRequested
 ---| review.Msg.CommandFailed
 ---| review.Msg.FocusChanged
+---| review.Msg.BufferShown
 
 ---@class review.Msg.Opened
 ---@field type "Opened"
@@ -96,6 +97,11 @@ local M = {}
 ---@field type "FocusChanged"
 ---@field file? review.FileKey
 ---@field path? string
+
+--- A review buffer got a window (BufWinEnter). The diff is drawn again: its gutter is measured in a window.
+---@class review.Msg.BufferShown
+---@field type "BufferShown"
+---@field file review.FileKey
 
 ---@class review.Msg.StoreLoaded
 ---@field type "StoreLoaded"
@@ -242,6 +248,12 @@ end
 ---@return review.Msg.FileStepped
 function M.file_stepped(change_id, path, offset)
   return { type = "FileStepped", change_id = change_id, path = path, offset = offset }
+end
+
+---@param file review.FileKey
+---@return review.Msg.BufferShown
+function M.buffer_shown(file)
+  return { type = "BufferShown", file = file }
 end
 
 ---@param file? review.FileKey

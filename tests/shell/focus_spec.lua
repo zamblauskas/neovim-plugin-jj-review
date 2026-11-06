@@ -11,13 +11,15 @@ local tbl = require("review.lib.tbl")
 --- Fake app that records FocusChanged messages.
 local function fake_app()
   local state = tbl.with(state_mod.initial(config.resolve()), { open = true })
-  local app = { messages = {} }
+  local app = { messages = {}, shown = {} }
   function app.state()
     return state
   end
   function app.dispatch(m)
     if m.type == "FocusChanged" then
       table.insert(app.messages, m)
+    elseif m.type == "BufferShown" then
+      table.insert(app.shown, m)
     end
   end
   return app
@@ -51,6 +53,12 @@ describe("shell.focus", function()
     diff.close()
     vim.cmd("silent! tabonly")
     vim.cmd("silent! only")
+  end)
+
+  it("reports a review buffer that gets a window", function()
+    open_file()
+    settle()
+    assert.are.same({ msg.buffer_shown({ change_id = "abc", path = "a.txt" }) }, app.shown)
   end)
 
   it("reports a review buffer in the focused window", function()

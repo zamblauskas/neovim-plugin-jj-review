@@ -1,5 +1,6 @@
 -- Focus port (Observer): reports what the focused window of the review tab shows, as `FocusChanged`.
 -- The explorer and floats are not reported: the last report stays.
+-- Also reports a review buffer that gets a window, as `BufferShown` (any window, any tab).
 
 local buffers = require("review.shell.buffers")
 local explorer = require("review.shell.explorer")
@@ -57,15 +58,33 @@ local function report()
   end
 end
 
+--- Dispatch BufferShown when `buf` is a review buffer.
+---@param buf integer
+local function report_shown(buf)
+  local file = observed.app and buffers.identify(buf)
+  if file then
+    assert(observed.app, "app").dispatch(msg.buffer_shown(file))
+  end
+end
+
 --- Start observing `tab`. Reports run on the next tick, after the window and buffer changes are done.
 ---@param app review.App
 ---@param tab integer
 function M.start(app, tab)
   observed = { tab = tab, app = app }
+  local group = vim.api.nvim_create_augroup(GROUP, { clear = true })
   vim.api.nvim_create_autocmd({ "BufEnter", "WinEnter" }, {
-    group = vim.api.nvim_create_augroup(GROUP, { clear = true }),
+    group = group,
     callback = function()
       vim.schedule(report)
+    end,
+  })
+  vim.api.nvim_create_autocmd("BufWinEnter", {
+    group = group,
+    callback = function(args)
+      vim.schedule(function()
+        report_shown(args.buf)
+      end)
     end,
   })
 end

@@ -463,6 +463,12 @@ describe("core.update", function()
   describe("focus", function()
     local file = { change_id = "b", path = "a.txt" }
 
+    it("draws the diff again when a buffer gets a window", function()
+      local state, effects = update(opened_state(), msg.buffer_shown(file))
+      assert.are.same({ "RenderDiff" }, types(effects))
+      assert.is_nil(state.current)
+    end)
+
     it("stores the focused review file and renders the explorer", function()
       local state, effects = update(opened_state(), msg.focus_changed(file))
       assert.are.same(file, state.current)

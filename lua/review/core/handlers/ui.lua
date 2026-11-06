@@ -116,6 +116,13 @@ function M.FocusChanged(state, msg)
   return final_state, vim.list_extend(effects, current_effects)
 end
 
+--- A buffer drawn while hidden has a gutter of 0 columns: draw again, now in a window.
+---@param state review.State
+---@return review.State, review.Effect[]
+function M.BufferShown(state)
+  return state, { effect.render_diff() }
+end
+
 ---@param state review.State
 ---@param msg review.Msg.ContentLoaded
 ---@return review.State, review.Effect[]
