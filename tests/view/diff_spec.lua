@@ -35,6 +35,7 @@ end
 local function input(fields)
   return vim.tbl_extend("force", {
     line_count = 8,
+    status = "modified",
     tabstop = 4,
     gutter_width = 3,
     marks = {},
@@ -86,6 +87,21 @@ describe("view.diff", function()
       end_col = mark.opts.end_col,
       hl_eol = mark.opts.hl_eol,
     })
+  end)
+
+  it("uses the lighter File groups in a new file and a deleted file", function()
+    local f = keys.annotate(file("@@ -0,0 +1,2 @@\n+a\n+b\n", "new file mode 100644\n"))
+    local marks = view.render(f, input({ line_count = 2, status = "added" })).extmarks
+    assert.are.same("ReviewAddedFile", marks[1].opts.hl_group)
+    local reviewed = { [keys.of_file(f)[1]] = { created = "t" } }
+    marks = view.render(f, input({ line_count = 2, status = "added", marks = reviewed })).extmarks
+    assert.are.same(
+      { "ReviewAddedFileReviewed", "ReviewAddedFile" },
+      { marks[1].opts.hl_group, marks[2].opts.hl_group }
+    )
+    f = file("@@ -1,2 +0,0 @@\n-a\n-b\n", "deleted file mode 100644\n")
+    marks = view.render(f, input({ line_count = 1, status = "deleted" })).extmarks
+    assert.are.same("ReviewRemovedFile", marks[1].opts.virt_lines[1][2][2])
   end)
 
   it("draws no removed blocks when they are hidden", function()

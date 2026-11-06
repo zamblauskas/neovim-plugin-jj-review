@@ -133,6 +133,8 @@ All groups link to standard groups by default. Override them in your color schem
 |---|---|
 | `ReviewAdded` / `ReviewRemoved` | `DiffAdd` / `DiffDelete` |
 | `ReviewAddedReviewed` / `ReviewRemovedReviewed` | 50% blend with the `Normal` background |
+| `ReviewAddedFile` / `ReviewRemovedFile` (lines of a new / deleted file) | 25% blend |
+| `ReviewAddedFileReviewed` / `ReviewRemovedFileReviewed` | 10% blend |
 | `ReviewAddedText` / `ReviewRemovedText` (changed tokens) | background mixed with the `Added` / `Removed` foreground |
 | `ReviewSign` | `DiagnosticOk` |
 | `ReviewComment` / `ReviewCommentOutdated` | `DiagnosticInfo` / `DiagnosticWarn` |

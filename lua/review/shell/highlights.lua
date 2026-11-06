@@ -4,9 +4,16 @@ local color = require("review.lib.color")
 
 local M = {}
 
---- Reviewed lines: the background of the base group, mixed with the Normal background.
-local DIMMED = { ReviewAddedReviewed = "DiffAdd", ReviewRemovedReviewed = "DiffDelete" }
-local DIM_ALPHA = 0.5
+--- Weaker versions of DiffAdd / DiffDelete: the background mixed with the Normal background, `alpha` of the base.
+--- Reviewed: reviewed lines. File: every line of a new or deleted file is a change, so the wall is lighter.
+local DIMMED = {
+  ReviewAddedReviewed = { base = "DiffAdd", alpha = 0.5 },
+  ReviewRemovedReviewed = { base = "DiffDelete", alpha = 0.5 },
+  ReviewAddedFile = { base = "DiffAdd", alpha = 0.25 },
+  ReviewRemovedFile = { base = "DiffDelete", alpha = 0.25 },
+  ReviewAddedFileReviewed = { base = "DiffAdd", alpha = 0.1 },
+  ReviewRemovedFileReviewed = { base = "DiffDelete", alpha = 0.1 },
+}
 
 --- Changed tokens of a paired line: the background of the base group, mixed with the foreground of the accent group.
 local TEXT = {
@@ -40,14 +47,15 @@ local LINKS = {
 
 --- Dimmed version of `base`. A link to `base` if a background is missing.
 ---@param base string
+---@param alpha number
 ---@return vim.api.keyset.highlight
-local function dimmed(base)
+local function dimmed(base, alpha)
   local hl = vim.api.nvim_get_hl(0, { name = base, link = false })
   local normal = vim.api.nvim_get_hl(0, { name = "Normal", link = false })
   if not (hl.bg and normal.bg) then
     return { link = base, default = true }
   end
-  return { fg = hl.fg, bg = color.blend(hl.bg, normal.bg, DIM_ALPHA), default = true }
+  return { fg = hl.fg, bg = color.blend(hl.bg, normal.bg, alpha), default = true }
 end
 
 --- Stronger version of `base`. A link to `DiffText` if a color is missing.
@@ -67,8 +75,8 @@ function M.setup()
   for group, target in pairs(LINKS) do
     vim.api.nvim_set_hl(0, group, { link = target, default = true })
   end
-  for group, base in pairs(DIMMED) do
-    vim.api.nvim_set_hl(0, group, dimmed(base))
+  for group, spec in pairs(DIMMED) do
+    vim.api.nvim_set_hl(0, group, dimmed(spec.base, spec.alpha))
   end
   for group, spec in pairs(TEXT) do
     vim.api.nvim_set_hl(0, group, stronger(spec.base, spec.accent))

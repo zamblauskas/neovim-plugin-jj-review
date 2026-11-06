@@ -109,6 +109,7 @@ Visual states:
 | Removed block, not reviewed | Red virtual lines above the next real line |
 | Removed block, reviewed | Red virtual lines dimmed, `✓` in the gutter of the first line |
 | Removed block, partly reviewed | `3/4` in the gutter of the first line |
+| Line of a new file, block of a deleted file | Lighter background (25%), lighter still when reviewed (10%): the whole file is one change |
 | Replaced line | Changed tokens of the removed line and of the added line get a stronger background |
 | Comment | Virtual lines below the last line of the anchor, `💬` prefix, from the left edge with the gutter |
 | Outdated comment | Virtual lines at the original line number, `⚠ outdated` prefix, other color |

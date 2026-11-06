@@ -108,6 +108,7 @@ local function render_file(state, entry, placements)
   drawn_gutter[buf] = gutter_width(buf)
   local rendered = view.render(file, {
     line_count = vim.api.nvim_buf_line_count(buf),
+    status = file.status,
     tabstop = vim.bo[buf].tabstop,
     gutter_width = drawn_gutter[buf],
     marks = state.marks,

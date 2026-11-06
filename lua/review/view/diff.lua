@@ -22,6 +22,7 @@ local PAD_WIDTH = 400
 
 ---@class review.DiffViewInput
 ---@field line_count integer
+---@field status review.FileStatus
 ---@field tabstop integer
 ---@field gutter_width integer  -- columns before the text (signs, numbers)
 ---@field marks review.Marks
@@ -171,12 +172,15 @@ local function removed_virt_lines(texts, ranges, prefix, group, input)
     :totable()
 end
 
+--- Highlight group of a line: base, "File" in a file that is all one change, "Reviewed" when dimmed.
 ---@param reviewed boolean
 ---@param input review.DiffViewInput
 ---@param base string  -- "ReviewAdded" or "ReviewRemoved"
 ---@return string
 local function line_group(reviewed, input, base)
-  return (reviewed and input.dim) and base .. "Reviewed" or base
+  local whole_file = (base == "ReviewAdded" and input.status == "added")
+    or (base == "ReviewRemoved" and input.status == "deleted")
+  return base .. (whole_file and "File" or "") .. ((reviewed and input.dim) and "Reviewed" or "")
 end
 
 --- A dimmed reviewed segment shows no changed tokens.
