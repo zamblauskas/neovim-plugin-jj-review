@@ -21,7 +21,8 @@ local M = {}
 ---@field disk_commit string|false     -- commit whose text is on disk (core/modes.lua)
 ---@field marks_loaded boolean         -- the store was read at least once
 ---@field contents table<string, table<string, string[]>>  -- new text lines by commit id, then path
----@field open_file? review.OpenFile    -- file in the diff window
+---@field buffers table<string, review.BufferState>  -- review files with a buffer, by file key (core/review_buffers.lua)
+---@field show_pending? string          -- key of the file to show when its buffer is ready
 ---@field current? review.FileKey      -- review file in the last focused window (reported by the shell)
 
 --- One review file: a revision at a path.
@@ -29,11 +30,11 @@ local M = {}
 ---@field change_id string
 ---@field path string
 
----@class review.OpenFile
----@field change_id string
----@field path string
----@field commit_id? string  -- commit whose text the buffer shows; nil until the first OpenBuffer
----@field mode? review.Mode    -- mode of the shown buffer
+---@class review.BufferState
+---@field file review.FileKey
+---@field commit_id? string  -- commit whose text the buffer has; nil until the first PrepareBuffer
+---@field mode? review.Mode    -- mode of the buffer
+---@field loading? string    -- commit whose content is loading
 
 ---@param config review.Config
 ---@return review.State
@@ -52,6 +53,7 @@ function M.initial(config)
     marks_loaded = false,
     disk_commit = false,
     contents = {},
+    buffers = {},
   }
 end
 

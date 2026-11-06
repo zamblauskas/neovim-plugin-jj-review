@@ -57,7 +57,7 @@ lua/review/
     toggle.lua          toggle rules → mark patch {set, unset}; apply
     targets.lua         toggle target (line, range, block, file) → keys
     navigation.lua      next / previous unreviewed change
-    open_file.lua       show the open file; follow it after a stack or diff change (commit or mode)
+    review_buffers.lua  review buffers (Reconciler): load, prepare, show, release after each change
     modes.lua           commit on disk; view or working-copy mode
     explorer_cursor.lua explorer cursor row after a redraw
     keymap_docs.lua     key descriptions by section (keymap desc, help)
@@ -94,8 +94,9 @@ lua/review/
     apply.lua           apply view specs to buffers (namespaces)
     layout.lua          review tab port (Facade): tab page, target window for opening a file
     explorer.lua        explorer window port (only owner of its buffer and window)
-    diff.lua            diff port: shows a review file in a window, renders shown review buffers
-    buffers.lua         review buffers by mode: scratch (view), real file (working copy)
+    diff.lua            diff port: prepare, show, release review buffers; render all of them
+    focus.lua           focus port (Observer): the focused review tab window → FocusChanged
+    buffers.lua         review buffers by mode: scratch (view), real file (working copy); one per file key
     diff_keymaps.lua    diff buffer keymaps → messages
     highlights.lua      highlight groups (default links)
     watcher.lua         op_heads watcher + focus autocmds
@@ -122,7 +123,8 @@ Lib modules do not require `core/`, `parse/`, `view/`, or other `shell/` modules
 
 See `core/state.lua` (`review.State`). Main fields: `config`, `open`, `generation`, `cwd`, `root`, `revset`,
 `op_id`, `stack`, `diffs` (by commit id), `contents` (new text lines by commit id and path), `marks` (by line key),
-`comments`, `folds` (user fold choice by change id), `open_file` (`{change_id, path}`).
+`comments`, `folds` (user fold choice by change id), `buffers` (review files with a buffer, by file key),
+`show_pending` (file to show when its buffer is ready), `current` (file in the last focused window).
 
 **Generation.** Each `Opened` increments `generation`. Effects carry it, and their result messages carry it back.
 `update` drops a message from an older generation, and every message except `Opened` while the review is closed.
@@ -141,12 +143,12 @@ A failed `jj diff` or `jj file show` is a `JjFailed` (stack error state). Messag
 | JJ | `RootResolved{root}`, `OpChecked{op_id}`, `StackLoaded{revisions}`, `DiffLoaded{commit_id, files}`, `ContentLoaded{commit_id, path, lines}`, `JjFailed{stderr}` |
 | Store | `StoreLoaded{marks, comments}`, `StoreFailed{error}` |
 | Review | `ToggleRequested{target, now}`, `UnreviewedStepped{change_id, path, line, offset}`, `CommentSubmitted{anchor, text}`, `CommentDeleted{id}` |
-| UI | `FoldToggled{change_id}`, `FileOpened{change_id, path}`, `FileStepped{offset}`, `EditRequested{change_id}` |
+| UI | `FoldToggled{change_id}`, `FileOpened{change_id, path}`, `FileStepped{change_id, path, offset}`, `FocusChanged{file?, path?}`, `EditRequested{change_id}` |
 
 ## Effects
 
 v0.3 has `ResolveRoot`, `CheckOp`, `LoadStack`, `LoadDiff`, `LoadContent`, `LoadStore`, `SaveMarks`, `ClearMarks` (v0.5: `ClearStore`),
-`OpenTab`, `CloseTab`, `OpenBuffer`, `MoveCursor`, `RenderExplorer`, `RenderDiff`, `Notify`. The rest is the plan. Effects for JJ carry `generation` and `root`.
+`OpenTab`, `CloseTab`, `OpenBuffer` (now `PrepareBuffer` and `ShowBuffer`), `MoveCursor`, `RenderExplorer`, `RenderDiff`, `Notify`. The rest is the plan. Effects for JJ carry `generation` and `root`.
 
 | Effect | Result message |
 |---|---|
@@ -162,10 +164,9 @@ v0.3 has `ResolveRoot`, `CheckOp`, `LoadStack`, `LoadDiff`, `LoadContent`, `Load
 | `OpenCommentInput{title, draft}` | `CommentSubmitted` (on save) |
 | `MoveCursor{line}` | none |
 | `StartWatcher{root}` / `StopWatcher` | `RefreshRequested` on each jj operation or focus |
-| `CloseDiff` | none |
 | `OpenTab` / `CloseTab` | none |
 | `RenderExplorer` / `RenderDiff` | none |
-| `OpenBuffer{change_id, path, lines, cursor_line, keep_view, mode, file_path}` | none |
+| `PrepareBuffer{file, lines, mode, file_path}` / `ShowBuffer{file, cursor_line}` / `ReleaseBuffer{file}` | none |
 | `Notify{level, text}` | none |
 
 Render is an effect, so `update` decides when to redraw. The shell computes the view from the new state and applies it.
@@ -185,8 +186,9 @@ Trigger: watcher on `.jj/repo/op_heads/heads/` (debounced 200 ms; follows `.jj/r
 focus → `RefreshRequested` → `CheckOp` and `LoadStore`. Same as Open steps 2–4. Only rewritten revisions (new commit
 ids) are fetched again. Old cache entries not in the stack are dropped.
 
-- The open file follows: new commit → shown again, cursor and scroll kept; revision or file gone → `CloseDiff`.
-- A stack error (not linear) does not change the open file.
+- Review buffers follow (`review_buffers.sync`): new commit or mode → prepared again, cursor and scroll kept;
+  revision or file gone → `ReleaseBuffer`.
+- A stack error (not linear) does not change the review buffers.
 - `JjFailed` with a loaded stack keeps it and warns. The error state is only for the first load.
 - The fold default is computed again per stack load; the old one stays until then.
 - The explorer cursor stays on its target. Gone: its revision; revision gone: the nearest older; else the newest.
@@ -199,75 +201,38 @@ ids) are fetched again. Old cache entries not in the stack are dropped.
 
 ### Open file
 
-1. `<CR>` in explorer → `FileOpened{change_id, path}`. `]R` / `[R` → `FileStepped{offset}` → same as `FileOpened`.
-2. Mode: working-copy if the revision is `@`, or `@` is empty and the revision is `@-`. Else view.
-3. View mode → `LoadContent` (if not cached), then `OpenBuffer` (scratch). Deleted and binary files need no
-   content. Working-copy mode → `OpenBuffer` (real file).
-4. `RenderDiff`.
+1. `<CR>` in explorer → `FileOpened{change_id, path}`. `]f` / `[f` → `FileStepped{change_id, path, offset}` → same
+   as `FileOpened`.
+2. The file is added to `state.buffers` and waits to be shown (`show_pending`).
+3. `review_buffers.sync`: `LoadContent` if the text is not cached, then `PrepareBuffer`, `ShowBuffer`, `RenderDiff`.
+   Deleted and binary files need no content.
+4. The focus Observer reports `FocusChanged` → `current` → `RenderExplorer`. Core does not set `current` on open:
+   the Observer is its one source.
 
-## Planned: windows and buffers
+## Windows and buffers
 
-Refactor for the model in [ux.md](ux.md#windows-and-buffers). Replaces `open_file` and the diff window.
-
-### Concepts
+The model of [ux.md](ux.md#windows-and-buffers).
 
 - **File key**: `{change_id, path}`. One review file.
-- **Review buffer**: the buffer of a file key in a mode. Core knows the file keys that have a buffer
-  (`state.buffers`); the shell knows the buffer numbers (`shell/buffers.lua`).
-- **Current file**: the file key of the review buffer in the last focused window of the review tab. The shell
-  observes it (Observer); core stores it (`state.current`).
-
-### State
-
-| Field | Before | After |
-|---|---|---|
-| `open_file` `{change_id, path, commit_id?, mode?}` | the file the plugin last showed | removed |
-| `buffers` `table<key, {change_id, path, commit_id, mode}>` | — | review files with a buffer, and the commit and mode of their text |
-| `current` `{change_id, path}?` | — | reported by the shell; nil: no review buffer in the focused window |
-
-### Messages
-
-| Message | Source | Core |
-|---|---|---|
-| `FileOpened{change_id, path}` | explorer `<CR>`, `]f` / `[f` | `PrepareBuffer` (after `LoadContent` if needed), then `ShowBuffer` |
-| `FocusChanged{file?, path?}` (new) | shell Observer: `WinEnter`, `BufWinEnter` in the review tab | `file`: a review buffer → `current = file`. `path`: a real file, not a review buffer → adopt it if it is a file of the working-copy revision (`PrepareBuffer`), else `current = nil`. `RenderExplorer` if `current` changed |
-| `FileStepped{change_id, path, offset}` | `]f` / `[f` (buffer-local keys know their file) | steps from that file (was: `open_file`) |
-
-### Effects
-
-`OpenBuffer` is split in two commands (Command pattern): make the buffer, and put it in a window.
-
-| Effect | Shell |
-|---|---|
-| `PrepareBuffer{change_id, path, mode, lines?, file_path?}` (new) | create or update the buffer, register it, set keymaps. Every window that shows it keeps its cursor and scroll |
-| `ShowBuffer{change_id, path, cursor_line}` (new) | put the buffer in the target window and focus it |
-| `ReleaseBuffer{change_id, path}` (new) | release one buffer; windows that show it get an empty buffer |
-| `RenderDiff` | renders every registered buffer (was: the open file only). Batched once per tick |
-| `OpenBuffer`, `CloseDiff` | removed |
-
-**Target window** (`shell/layout.lua`): the current window if it is in the review tab and is not the explorer;
-else the previous window (`wincmd p`) if it qualifies; else a new split on the right of the explorer.
-`layout.diff_window` and `buffers.release_real_except` are removed.
-
-### Flows
-
-- **Open a file**: `FileOpened` → `PrepareBuffer` → `ShowBuffer` → the Observer reports `FocusChanged` →
-  `current` → `RenderExplorer`. Core does not set `current` on open: one source for it (the Observer).
-- **Stack change** (`core/review_buffers.follow`, was `open_file.follow`), for each entry of `state.buffers`:
-  rewritten → `LoadContent` (view mode) and `PrepareBuffer`; gone → `ReleaseBuffer`; mode changed → `PrepareBuffer`
-  in the new mode, `ReleaseBuffer` of the old one, windows that showed the old buffer show the new one.
-- **Close**: release all buffers (no change).
-
-### Modules
-
-| Module | Change |
-|---|---|
-| `core/open_file.lua` | → `core/review_buffers.lua`: prepare, follow and release over `state.buffers` |
-| `core/handlers/ui.lua` | `FileStepped` from the file of the key; new `FocusChanged` |
-| `shell/focus.lua` (new) | Observer: autocmds in the review tab → `FocusChanged` (sent only when it changes) |
-| `shell/buffers.lua` | `identify(buf)` → file key; `release(key)`; no `release_real_except` |
-| `shell/layout.lua` | `target_window()`; no diff window |
-| `shell/diff.lua` | `prepare`, `show`, `release`; render all registered buffers |
+- **Review buffer**: one buffer per file key, in a mode (view: scratch; working copy: the real file). Core knows
+  the file keys that have a buffer, and the commit and mode of their text (`state.buffers`). The shell knows the
+  buffer numbers (`shell/buffers.lua`).
+- **Reconciler** (`core/review_buffers.sync`): after each stack, diff or content change, every entry of
+  `state.buffers` gets a plan (Strategy by kind): `release` (revision or file gone), `wait` (diff loading), `load`
+  (text not cached; once per commit), `prepare` (new commit or mode), `ready`. Then the waiting file is shown if its
+  buffer is ready.
+- **Commands** (Command pattern): `PrepareBuffer` makes or updates the buffer (windows keep cursor and scroll; a
+  mode change makes a new buffer, which takes the windows of the old one). `ShowBuffer` puts it in the target
+  window; the first show sets the cursor. `ReleaseBuffer` releases it: a scratch buffer is wiped (its windows get
+  an empty buffer); a real buffer loses marks and keymaps and stays.
+- **Target window** (`layout.target_window`): the current window if it is in the review tab, not the explorer and
+  not a float; else the previous window (`wincmd p`) by the same rule; else a new split on the right.
+- **Current file** (`state.current`): `shell/focus.lua` (Observer) watches `BufEnter` / `WinEnter` in the review
+  tab and sends `FocusChanged` when the focused window shows something else. The explorer and floats are not
+  reported.
+- **Adoption**: `FocusChanged{path}` for a real file of the working-copy revision (opened by `gd`, `:e`) adds it to
+  `state.buffers`; it gets marks and keymaps like a file opened from the explorer.
+- **Render**: `RenderDiff` draws every review buffer whose text is of the current commit.
 
 ## JJ calls
 

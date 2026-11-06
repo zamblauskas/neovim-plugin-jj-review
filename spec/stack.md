@@ -44,8 +44,8 @@ No refresh loop: all JJ reads by the plugin use `--ignore-working-copy`. They ne
 | Squash root into trunk | JJ refuses (trunk is immutable). |
 | New revision on a middle revision (sibling) | Not linear → error. |
 | Abandon a revision | It disappears. Marks stay in the file. |
-| Open revision disappears | Release the buffers of its files; windows that show them get an empty buffer. Explorer cursor goes to the nearest previous (older) revision still in the stack, else the newest. |
-| Open file disappears from its revision | Release its buffer; windows that show it get an empty buffer. Explorer cursor goes to the revision row. |
+| Open revision disappears | Release the buffers of its files (as for a file that disappears, below). Explorer cursor goes to the nearest previous (older) revision still in the stack, else the newest. |
+| Open file disappears from its revision | Release its buffer: a scratch buffer is wiped (its windows get an empty buffer); a real buffer loses the review marks and keymaps. Explorer cursor goes to the revision row. |
 | Open revision is rewritten | Every shown buffer of its files gets the new text and diff. Cursor and scroll stay. |
 | Refresh fails (jj error) | Keep the last stack. Show a warning. |
 
@@ -63,7 +63,7 @@ No refresh loop: all JJ reads by the plugin use `--ignore-working-copy`. They ne
 - A modified real buffer keeps its marks (they move with the text) until it is saved.
 - After a save of any file of the repo while a review is open, the plugin runs `jj util snapshot`. The new
   operation refreshes the review.
-- When the mode of the open file changes (after `jj edit`), the file opens again in the new mode. The cursor stays.
+- When the mode of a review file changes (after `jj edit`), its buffer is made again in the new mode, in the same windows. The cursor stays.
 - `<leader>re` in the explorer (revision or file row) runs `jj edit <rev>`, then `:checktime`. Then the refresh
   opens the real buffer. A failure shows a warning.
 - Both modes use the same renderer. It takes: buffer, old text, new text, diff hunks.

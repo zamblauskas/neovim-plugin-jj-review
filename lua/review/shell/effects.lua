@@ -250,11 +250,14 @@ end
 ---@return table<string, fun(effect: review.Effect, app: review.App)>
 local function diff_handlers(ports)
   return {
-    OpenBuffer = function(e, app)
-      ports.diff.open(e, app)
+    PrepareBuffer = function(e, app)
+      ports.diff.prepare(e, app)
     end,
-    CloseDiff = function()
-      ports.diff.close_file()
+    ShowBuffer = function(e)
+      ports.diff.show(e)
+    end,
+    ReleaseBuffer = function(e)
+      ports.diff.release(e)
     end,
     OpenCommentInput = function(e, app)
       ports.comment_input.open(e.title, function(text)

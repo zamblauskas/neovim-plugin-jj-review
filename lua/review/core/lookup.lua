@@ -19,6 +19,18 @@ function M.revision(state, change_id)
   return nil
 end
 
+--- The revision whose text is on disk (core/modes.lua), if it is in the stack.
+---@param state review.State
+---@return review.Revision?
+function M.disk_revision(state)
+  if state.stack.type ~= "ok" or not state.disk_commit then
+    return nil
+  end
+  return vim.iter(state.stack.revisions):find(function(rev)
+    return rev.commit_id == state.disk_commit
+  end)
+end
+
 ---@param state review.State
 ---@param rev review.Revision
 ---@param path string

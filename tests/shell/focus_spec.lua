@@ -33,6 +33,12 @@ end
 describe("shell.focus", function()
   local app
 
+  local function open_file()
+    local file = { change_id = "abc", path = "a.txt" }
+    diff.prepare(effect.prepare_buffer(file, { "x" }, "view", "/repo/a.txt"), app)
+    diff.show(effect.show_buffer(file, 1))
+  end
+
   before_each(function()
     app = fake_app()
     layout.open(app)
@@ -48,7 +54,7 @@ describe("shell.focus", function()
   end)
 
   it("reports a review buffer in the focused window", function()
-    diff.open(effect.open_buffer("abc", "a.txt", { "x" }, 1), app)
+    open_file()
     settle()
     assert.are.same({ msg.focus_changed({ change_id = "abc", path = "a.txt" }) }, app.messages)
   end)
@@ -63,7 +69,7 @@ describe("shell.focus", function()
   end)
 
   it("does not report the explorer, and does not repeat a report", function()
-    diff.open(effect.open_buffer("abc", "a.txt", { "x" }, 1), app)
+    open_file()
     settle()
     vim.api.nvim_set_current_win(explorer.handles().win --[[@as integer]])
     settle()

@@ -41,7 +41,8 @@ The review follows Vim conventions (netrw, nvim-tree). There is no special diff 
    - `]f` / `[f` step from the current file.
 - The stack changes:
   - A rewritten file: its buffer shows the new diff.
-  - A file that is gone: its buffer is released. A window that shows it gets an empty buffer.
+  - A file that is gone: its buffer is released. A scratch buffer is wiped (a window that shows it gets an empty
+    buffer). A real file buffer stays, without the review marks and keymaps.
 - `:Review close`: all review buffers are released (scratch buffers wiped; marks and keymaps removed from real
   buffers).
 

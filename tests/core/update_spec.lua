@@ -108,22 +108,27 @@ describe("core.update", function()
     assert.are.equal(state.fold_default, again.fold_default)
   end)
 
-  describe("open file after a refresh", function()
+  describe("review buffers after a refresh", function()
     local added = {
       status = "added",
       path = "a.txt",
       binary = false,
       hunks = { { old_start = 0, old_count = 0, new_start = 1, new_count = 1, lines = { { kind = "+", text = "x" } } } },
     }
+    local other = vim.tbl_extend("force", added, { path = "o.txt" })
+    local a_txt = { change_id = "b", path = "a.txt" }
+    local o_txt = { change_id = "b", path = "o.txt" }
 
-    --- Revision "b" (commit "b1") with a.txt open and shown.
+    --- Revision "b" (commit "b1") with buffers for a.txt and o.txt, both prepared.
     ---@return review.State
-    local function showing()
+    local function prepared()
       local b1 = vim.tbl_extend("force", rev("b", { "a" }), { commit_id = "b1" })
       local state = update(opened_state(), msg.root_resolved(1, "/repo"))
       state = update(state, msg.stack_loaded(1, { b1, rev("a", {}) }))
-      state = update(state, msg.diff_loaded(1, "b1", { added }))
+      state = update(state, msg.diff_loaded(1, "b1", { added, other }))
       state = update(state, msg.diff_loaded(1, "a", {}))
+      state = update(state, msg.content_loaded(1, "b1", "o.txt", { "o" }))
+      state = update(state, msg.file_opened("b", "o.txt"))
       state = update(state, msg.file_opened("b", "a.txt"))
       return (update(state, msg.content_loaded(1, "b1", "a.txt", { "x" })))
     end
@@ -133,52 +138,94 @@ describe("core.update", function()
       return vim.tbl_extend("force", rev("b", { "a" }), { commit_id = "b2" })
     end
 
-    it("shows the new commit of the file and keeps the view", function()
-      local state = update(showing(), msg.stack_loaded(1, { rewritten(), rev("a", {}) }))
-      state = update(state, msg.diff_loaded(1, "b2", { added }))
-      local next_state, effects = update(state, msg.content_loaded(1, "b2", "a.txt", { "y" }))
-      assert.are.same("b2", next_state.open_file.commit_id)
-      assert.are.same({
-        effect.open_buffer("b", "a.txt", { "y" }, 1, { keep_view = true, file_path = "/repo/a.txt" }),
-        effect.render_diff(),
-      }, effects)
+    it("loads and prepares every buffer of a rewritten revision, without showing", function()
+      local state = update(prepared(), msg.stack_loaded(1, { rewritten(), rev("a", {}) }))
+      local next_state, effects = update(state, msg.diff_loaded(1, "b2", { added, other }))
+      assert.are.same({ "RenderExplorer", "LoadContent", "LoadContent" }, types(effects))
+      next_state, effects = update(next_state, msg.content_loaded(1, "b2", "a.txt", { "y" }))
+      assert.are.same({ effect.prepare_buffer(a_txt, { "y" }, "view", "/repo/a.txt"), effect.render_diff() }, effects)
+      assert.are.same("b2", next_state.buffers["b/a.txt"].commit_id)
+      assert.are.same("b1", next_state.buffers["b/o.txt"].commit_id)
     end)
 
-    it("opens the real buffer when the revision becomes the working copy (jj edit)", function()
+    it("does not load the same content twice", function()
+      local state = update(prepared(), msg.stack_loaded(1, { rewritten(), rev("a", {}) }))
+      state = update(state, msg.diff_loaded(1, "b2", { added, other }))
+      local _, effects = update(state, msg.diff_loaded(1, "a", {}))
+      assert.are.same({ "RenderExplorer" }, types(effects))
+    end)
+
+    it("prepares the real buffer when the revision becomes the working copy (jj edit)", function()
       local b1 = vim.tbl_extend("force", rev("b", { "a" }), { commit_id = "b1", working_copy = true })
-      local state, effects = update(showing(), msg.stack_loaded(1, { b1, rev("a", {}) }))
-      assert.are.same("working_copy", state.open_file.mode)
-      local open = effects[#effects - 1]
-      assert.are.same(
-        { "OpenBuffer", "working_copy", "/repo/a.txt", true },
-        { open.type, open.mode, open.file_path, open.keep_view }
-      )
+      local state, effects = update(prepared(), msg.stack_loaded(1, { b1, rev("a", {}) }))
+      assert.are.same("working_copy", state.buffers["b/a.txt"].mode)
+      assert.are.same(effect.prepare_buffer(a_txt, { "x" }, "working_copy", "/repo/a.txt"), effects[2])
     end)
 
     it("waits for the new diff", function()
-      local state, effects = update(showing(), msg.stack_loaded(1, { rewritten(), rev("a", {}) }))
-      assert.are.same("b1", state.open_file.commit_id)
+      local state, effects = update(prepared(), msg.stack_loaded(1, { rewritten(), rev("a", {}) }))
+      assert.are.same("b1", state.buffers["b/a.txt"].commit_id)
       assert.are.same({ "RenderExplorer", "LoadDiff" }, types(effects))
     end)
 
-    it("closes the diff when the revision is gone", function()
-      local state, effects = update(showing(), msg.stack_loaded(1, { rev("a", {}) }))
-      assert.is_nil(state.open_file)
-      assert.are.same({ "RenderExplorer", "CloseDiff", "RenderExplorer" }, types(effects))
+    it("releases every buffer of a revision that is gone", function()
+      local state, effects = update(prepared(), msg.stack_loaded(1, { rev("a", {}) }))
+      assert.are.same({}, state.buffers)
+      assert.are.same({ effect.render_explorer(), effect.release_buffer(a_txt), effect.release_buffer(o_txt) }, effects)
     end)
 
-    it("closes the diff when the file is gone from the revision", function()
-      local state = update(showing(), msg.stack_loaded(1, { rewritten(), rev("a", {}) }))
-      local next_state, effects = update(state, msg.diff_loaded(1, "b2", {}))
-      assert.is_nil(next_state.open_file)
-      assert.are.same({ "RenderExplorer", "CloseDiff", "RenderExplorer" }, types(effects))
+    it("releases the buffer of a file that is gone from the revision", function()
+      local state = update(prepared(), msg.stack_loaded(1, { rewritten(), rev("a", {}) }))
+      local next_state, effects = update(state, msg.diff_loaded(1, "b2", { other }))
+      assert.is_nil(next_state.buffers["b/a.txt"])
+      assert.are.same({ "RenderExplorer", "ReleaseBuffer", "LoadContent" }, types(effects))
     end)
 
-    it("keeps the diff while the stack is not linear", function()
+    it("keeps the buffers while the stack is not linear", function()
       local c = vim.tbl_extend("force", rev("c", { "a" }), {})
-      local state = update(showing(), msg.stack_loaded(1, { rewritten(), c, rev("a", {}) }))
+      local state = update(prepared(), msg.stack_loaded(1, { rewritten(), c, rev("a", {}) }))
       assert.are.same("error", state.stack.type)
-      assert.are.same("b1", state.open_file.commit_id)
+      assert.are.same("b1", state.buffers["b/a.txt"].commit_id)
+    end)
+  end)
+
+  describe("focus on a real file", function()
+    local added = {
+      status = "added",
+      path = "src/a.txt",
+      binary = false,
+      hunks = { { old_start = 0, old_count = 0, new_start = 1, new_count = 1, lines = { { kind = "+", text = "x" } } } },
+    }
+
+    ---@return review.State
+    local function working_copy_state()
+      local b = vim.tbl_extend("force", rev("b", { "a" }), { working_copy = true })
+      local state = update(opened_state(), msg.root_resolved(1, "/repo"))
+      state = update(state, msg.stack_loaded(1, { b, rev("a", {}) }))
+      state = update(state, msg.diff_loaded(1, "b", { added }))
+      return (update(state, msg.content_loaded(1, "b", "src/a.txt", { "x" })))
+    end
+
+    it("adopts a file of the working-copy revision and makes it current", function()
+      local state, effects = update(working_copy_state(), msg.focus_changed(nil, "/repo/src/a.txt"))
+      local file = { change_id = "b", path = "src/a.txt" }
+      assert.are.same(file, state.current)
+      assert.are.same({
+        effect.prepare_buffer(file, { "x" }, "working_copy", "/repo/src/a.txt"),
+        effect.render_diff(),
+        effect.render_explorer(),
+      }, effects)
+    end)
+
+    it("does not adopt a file outside the working-copy revision", function()
+      local state, effects = update(working_copy_state(), msg.focus_changed(nil, "/repo/other.txt"))
+      assert.are.same({}, state.buffers)
+      assert.are.same({}, effects)
+    end)
+
+    it("does not adopt a file outside the repo", function()
+      local state = update(working_copy_state(), msg.focus_changed(nil, "/elsewhere/src/a.txt"))
+      assert.are.same({}, state.buffers)
     end)
   end)
 
@@ -303,27 +350,37 @@ describe("core.update", function()
 
     it("loads the content when it is not in the cache", function()
       local state, effects = update(loaded_state(), msg.file_opened("b", "a.txt"))
-      assert.are.same({ change_id = "b", path = "a.txt" }, state.open_file)
+      assert.are.same("b/a.txt", state.show_pending)
       assert.are.same({ effect.load_content(1, "/repo", "b", "a.txt") }, effects)
     end)
 
-    it("opens the buffer when the content arrives", function()
+    it("prepares and shows the buffer when the content arrives", function()
+      local file = { change_id = "b", path = "a.txt" }
       local state = update(loaded_state(), msg.file_opened("b", "a.txt"))
       local next_state, effects = update(state, msg.content_loaded(1, "b", "a.txt", { "x" }))
       assert.are.same({ ["a.txt"] = { "x" } }, next_state.contents.b)
-      assert.are.same(
-        { effect.open_buffer("b", "a.txt", { "x" }, 1, { file_path = "/repo/a.txt" }), effect.render_diff() },
-        effects
-      )
+      assert.is_nil(next_state.show_pending)
+      assert.are.same({
+        effect.prepare_buffer(file, { "x" }, "view", "/repo/a.txt"),
+        effect.show_buffer(file, 1),
+        effect.render_diff(),
+      }, effects)
     end)
 
     it("opens a cached file without loading", function()
       local state = update(loaded_state(), msg.content_loaded(1, "b", "a.txt", { "x" }))
       local _, effects = update(state, msg.file_opened("b", "a.txt"))
-      assert.are.same({ "OpenBuffer", "RenderDiff" }, types(effects))
+      assert.are.same({ "PrepareBuffer", "ShowBuffer", "RenderDiff" }, types(effects))
     end)
 
-    it("only caches content of a file that is not open any more", function()
+    it("shows a prepared buffer again without preparing it", function()
+      local state = update(loaded_state(), msg.content_loaded(1, "b", "a.txt", { "x" }))
+      state = update(state, msg.file_opened("b", "a.txt"))
+      local _, effects = update(state, msg.file_opened("b", "a.txt"))
+      assert.are.same({ "ShowBuffer" }, types(effects))
+    end)
+
+    it("only caches content of a file without a buffer", function()
       local state = update(loaded_state(), msg.file_opened("b", "d.txt"))
       local next_state, effects = update(state, msg.content_loaded(1, "b", "a.txt", { "x" }))
       assert.are.same({ "x" }, next_state.contents.b["a.txt"])
@@ -331,17 +388,19 @@ describe("core.update", function()
     end)
 
     it("opens a deleted file with one empty line, without loading", function()
+      local file = { change_id = "b", path = "d.txt" }
       local _, effects = update(loaded_state(), msg.file_opened("b", "d.txt"))
-      assert.are.same(
-        { effect.open_buffer("b", "d.txt", { "" }, 1, { file_path = "/repo/d.txt" }), effect.render_diff() },
-        effects
-      )
+      assert.are.same({
+        effect.prepare_buffer(file, { "" }, "view", "/repo/d.txt"),
+        effect.show_buffer(file, 1),
+        effect.render_diff(),
+      }, effects)
     end)
 
     it("steps to the next and previous file in explorer order", function()
       local next_state, effects = update(loaded_state(), msg.file_stepped("b", "a.txt", 1))
-      assert.are.same({ change_id = "b", path = "d.txt", commit_id = "b", mode = "view" }, next_state.open_file)
-      assert.are.same({ "OpenBuffer", "RenderDiff" }, types(effects))
+      assert.are.same("b", next_state.buffers["b/d.txt"].commit_id)
+      assert.are.same({ "PrepareBuffer", "ShowBuffer", "RenderDiff" }, types(effects))
       assert.are.same(
         { effect.load_content(1, "/repo", "b", "a.txt") },
         select(2, update(next_state, msg.file_stepped("b", "d.txt", -1)))

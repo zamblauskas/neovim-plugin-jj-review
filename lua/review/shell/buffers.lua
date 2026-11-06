@@ -1,9 +1,12 @@
--- Review buffers (Strategy by mode). The only owner of the buffers a review shows.
---   view:         scratch buffer `review://<change-id>/<path>`; text set on each open; wiped on release.
+-- Review buffers (Strategy by mode). The only owner of the buffers a review shows. One buffer per file key.
+--   view:         scratch buffer `review://<change-id>/<path>`; text set on each prepare; wiped on release
+--                 (its windows get an empty buffer).
 --   working_copy: the real file buffer; its text is never changed; on release only the review extmarks and
---                 keymaps are removed.
+--                 keymaps are removed. It stays in its windows.
+-- A buffer keeps its marks and keymaps in every window until it is released (spec/ux.md "Windows and buffers").
 
 local diff_keymaps = require("review.shell.diff_keymaps")
+local review_buffers = require("review.core.review_buffers")
 
 local M = {}
 
@@ -14,50 +17,72 @@ M.ns = vim.api.nvim_create_namespace("review.diff")
 ---@field mode review.Mode
 ---@field file review.FileKey
 ---@field keymaps review.MappedKey[]
+---@field shown boolean  -- shown at least once (the first show sets the cursor)
 
----@type table<string, review.ReviewBuffer>  by key
+---@type table<string, review.ReviewBuffer>  by file key
 local registry = {}
 
----@param mode review.Mode
----@param change_id string
----@param path string
----@return string
-local function key_of(mode, change_id, path)
-  return mode .. ":" .. change_id .. "/" .. path
-end
-
----@param e review.Effect.OpenBuffer
+---@param e review.Effect.PrepareBuffer
 ---@return integer
 local function create_scratch(e)
   local buf = vim.api.nvim_create_buf(false, true)
-  vim.api.nvim_buf_set_name(buf, "review://" .. e.change_id .. "/" .. e.path)
-  local filetype = vim.filetype.match({ filename = e.path, buf = buf })
+  vim.api.nvim_buf_set_name(buf, "review://" .. e.file.change_id .. "/" .. e.file.path)
+  local filetype = vim.filetype.match({ filename = e.file.path, buf = buf })
   if filetype then
     vim.bo[buf].filetype = filetype
   end
   return buf
 end
 
+--- Run `fn`, then restore the view of every window that shows `buf` (clamped to the new line count).
+---@param buf integer
+---@param fn fun()
+local function keeping_views(buf, fn)
+  local saved = vim.tbl_map(function(win)
+    return { win = win, view = vim.api.nvim_win_call(win, vim.fn.winsaveview) }
+  end, vim.fn.win_findbuf(buf))
+  fn()
+  local line_count = vim.api.nvim_buf_line_count(buf)
+  for _, s in ipairs(saved) do
+    s.view.lnum, s.view.topline = math.min(s.view.lnum, line_count), math.min(s.view.topline, line_count)
+    vim.api.nvim_win_call(s.win, function()
+      vim.fn.winrestview(s.view)
+    end)
+  end
+end
+
 ---@param buf integer
 ---@param lines string[]
 local function set_lines(buf, lines)
-  vim.bo[buf].modifiable = true
-  vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
-  vim.bo[buf].modifiable = false
+  keeping_views(buf, function()
+    vim.bo[buf].modifiable = true
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+    vim.bo[buf].modifiable = false
+  end)
 end
 
----@param e review.Effect.OpenBuffer
+---@param e review.Effect.PrepareBuffer
 ---@return integer
 local function load_real(e)
-  local buf = vim.fn.bufadd((assert(e.file_path, "file path")))
+  local buf = vim.fn.bufadd(e.file_path)
   vim.fn.bufload(buf)
   vim.bo[buf].buflisted = true
   return buf
 end
 
+--- Put an empty buffer in every window that shows `buf`.
+---@param buf integer
+local function empty_windows(buf)
+  for _, win in ipairs(vim.fn.win_findbuf(buf)) do
+    local empty = vim.api.nvim_create_buf(false, true)
+    vim.bo[empty].bufhidden = "wipe"
+    vim.api.nvim_win_set_buf(win, empty)
+  end
+end
+
 ---@class review.BufferKind
----@field create fun(e: review.Effect.OpenBuffer): integer
----@field update fun(buf: integer, e: review.Effect.OpenBuffer)
+---@field create fun(e: review.Effect.PrepareBuffer): integer
+---@field update fun(buf: integer, e: review.Effect.PrepareBuffer)
 ---@field release fun(entry: review.ReviewBuffer)
 
 ---@type table<review.Mode, review.BufferKind>
@@ -68,6 +93,7 @@ local KINDS = {
       set_lines(buf, e.lines)
     end,
     release = function(entry)
+      empty_windows(entry.buf)
       vim.api.nvim_buf_delete(entry.buf, { force = true })
     end,
   },
@@ -81,31 +107,81 @@ local KINDS = {
   },
 }
 
---- The buffer for the effect, created and registered if needed, with its text updated (view mode).
----@param e review.Effect.OpenBuffer
+---@param entry review.ReviewBuffer?
+---@return boolean
+local function is_valid(entry)
+  return entry ~= nil and vim.api.nvim_buf_is_valid(entry.buf)
+end
+
+---@param entry review.ReviewBuffer?
+local function release_entry(entry)
+  if entry and is_valid(entry) then
+    KINDS[entry.mode].release(entry)
+  end
+end
+
+--- Windows that showed the buffer of the old mode show `buf`, with their view.
+---@param old review.ReviewBuffer
+---@param buf integer
+local function take_windows(old, buf)
+  for _, win in ipairs(vim.fn.win_findbuf(old.buf)) do
+    local view = vim.api.nvim_win_call(win, vim.fn.winsaveview)
+    vim.api.nvim_win_set_buf(win, buf)
+    vim.api.nvim_win_call(win, function()
+      vim.fn.winrestview(view)
+    end)
+  end
+end
+
+--- A new buffer for the file. It replaces the buffer of the old mode in its windows.
+---@param e review.Effect.PrepareBuffer
+---@param old review.ReviewBuffer?
+---@param app review.App
+---@return review.ReviewBuffer
+local function create_entry(e, old, app)
+  local buf = KINDS[e.mode].create(e)
+  local entry = { buf = buf, mode = e.mode, file = e.file, keymaps = diff_keymaps.set(buf, e.file, app), shown = false }
+  if old and is_valid(old) then
+    entry.shown = old.shown
+    take_windows(old, buf)
+  end
+  release_entry(old)
+  return entry
+end
+
+--- Create or update the buffer of the file. A mode change makes a new buffer.
+---@param e review.Effect.PrepareBuffer
 ---@param app review.App
 ---@return integer
-function M.acquire(e, app)
-  local key = key_of(e.mode, e.change_id, e.path)
+function M.prepare(e, app)
+  local key = review_buffers.key(e.file)
   local entry = registry[key]
-  if not (entry and vim.api.nvim_buf_is_valid(entry.buf)) then
-    local buf = KINDS[e.mode].create(e)
-    local file = { change_id = e.change_id, path = e.path }
-    entry = { buf = buf, mode = e.mode, file = file, keymaps = diff_keymaps.set(buf, file, app) }
+  if not (is_valid(entry) and entry.mode == e.mode) then
+    entry = create_entry(e, entry, app)
     registry[key] = entry
   end
   KINDS[e.mode].update(entry.buf, e)
   return entry.buf
 end
 
---- Buffer of a file in a mode, if it is registered and valid.
----@param mode review.Mode
----@param change_id string
----@param path string
+--- Buffer of the file, if it is registered and valid.
+---@param file review.FileKey
 ---@return integer?
-function M.find(mode, change_id, path)
-  local entry = registry[key_of(mode, change_id, path)]
-  return (entry and vim.api.nvim_buf_is_valid(entry.buf)) and entry.buf or nil
+function M.find(file)
+  local entry = registry[review_buffers.key(file)]
+  return is_valid(entry) and entry.buf or nil
+end
+
+--- True the first time it is called for the file (the first show).
+---@param file review.FileKey
+---@return boolean
+function M.first_show(file)
+  local entry = registry[review_buffers.key(file)]
+  local first = entry ~= nil and not entry.shown
+  if first then
+    entry.shown = true
+  end
+  return first
 end
 
 --- File of a registered buffer, or nil.
@@ -118,32 +194,20 @@ function M.identify(buf)
   return entry and entry.file
 end
 
---- Release working-copy buffers other than `keep` (they left the review).
----@param keep integer
-function M.release_real_except(keep)
-  for key, entry in pairs(registry) do
-    if entry.mode == "working_copy" and entry.buf ~= keep then
-      if vim.api.nvim_buf_is_valid(entry.buf) then
-        KINDS.working_copy.release(entry)
-      end
-      registry[key] = nil
-    end
-  end
+--- Release the buffer of the file.
+---@param file review.FileKey
+function M.release(file)
+  local key = review_buffers.key(file)
+  release_entry(registry[key])
+  registry[key] = nil
 end
 
 --- Release all buffers.
 function M.release_all()
   for _, entry in pairs(registry) do
-    if vim.api.nvim_buf_is_valid(entry.buf) then
-      KINDS[entry.mode].release(entry)
-    end
+    release_entry(entry)
   end
   registry = {}
-end
-
----@return table<string, review.ReviewBuffer>
-function M.registry()
-  return registry
 end
 
 return M

@@ -4,7 +4,7 @@ local effect = require("review.core.effect")
 local folds = require("review.core.folds")
 local keys = require("review.core.keys")
 local modes = require("review.core.modes")
-local open_file = require("review.core.open_file")
+local review_buffers = require("review.core.review_buffers")
 local stack = require("review.core.stack")
 local tbl = require("review.lib.tbl")
 
@@ -87,12 +87,12 @@ local function with_stack(state, built)
   })
 end
 
---- Let the open file follow the new state. Its effects come after `effects`.
+--- Bring the review buffers up to date with the new state. Their effects come after `effects`.
 ---@param state review.State
 ---@param effects review.Effect[]
 ---@return review.State, review.Effect[]
 local function with_followed(state, effects)
-  local next_state, follow_effects = open_file.follow(state)
+  local next_state, follow_effects = review_buffers.sync(state)
   return next_state, vim.list_extend(effects, follow_effects)
 end
 

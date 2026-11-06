@@ -8,7 +8,9 @@ local M = {}
 ---| review.Effect.LoadStack
 ---| review.Effect.LoadDiff
 ---| review.Effect.LoadContent
----| review.Effect.OpenBuffer
+---| review.Effect.PrepareBuffer
+---| review.Effect.ShowBuffer
+---| review.Effect.ReleaseBuffer
 ---| review.Effect.RenderDiff
 ---| review.Effect.LoadStore
 ---| review.Effect.SaveMarks
@@ -21,7 +23,6 @@ local M = {}
 ---| review.Effect.MoveCursor
 ---| review.Effect.StartWatcher
 ---| review.Effect.StopWatcher
----| review.Effect.CloseDiff
 ---| review.Effect.OpenTab
 ---| review.Effect.CloseTab
 ---| review.Effect.RenderExplorer
@@ -55,23 +56,28 @@ local M = {}
 ---@field commit_id string
 ---@field path string
 
---- Show a file of a revision in the diff window (view mode: read-only scratch buffer).
----@class review.Effect.OpenBuffer
----@field type "OpenBuffer"
----@field change_id string
----@field path string
+--- Create or update the buffer of a review file. Windows that show it keep their cursor and scroll.
+---@class review.Effect.PrepareBuffer
+---@field type "PrepareBuffer"
+---@field file review.FileKey
 ---@field lines string[]
----@field cursor_line integer  -- 1-based; the shell clamps it to the buffer
----@field keep_view boolean     -- the window shows an older version of the file: keep cursor and scroll
 ---@field mode review.Mode       -- working_copy: the real file buffer at `file_path`; view: a scratch buffer
----@field file_path? string      -- absolute path (working_copy)
+---@field file_path string       -- absolute path (working_copy)
 
----@class review.OpenBufferOpts
----@field keep_view? boolean
----@field mode? review.Mode
----@field file_path? string
+--- Put the buffer of a review file in the target window and focus it. The cursor goes to `cursor_line` (1-based,
+--- clamped) the first time the buffer is shown.
+---@class review.Effect.ShowBuffer
+---@field type "ShowBuffer"
+---@field file review.FileKey
+---@field cursor_line integer
 
---- Draw the diff of the open file (`state.open_file`) on its buffer.
+--- The review file is gone. A scratch buffer is wiped (its windows get an empty buffer); a real buffer loses the
+--- review marks and keymaps.
+---@class review.Effect.ReleaseBuffer
+---@field type "ReleaseBuffer"
+---@field file review.FileKey
+
+--- Draw the diff of every review buffer (`state.buffers`).
 ---@class review.Effect.RenderDiff
 ---@field type "RenderDiff"
 
@@ -118,10 +124,6 @@ local M = {}
 
 ---@class review.Effect.StopWatcher
 ---@field type "StopWatcher"
-
---- The open file is gone: the diff window shows an empty buffer; review buffers are wiped.
----@class review.Effect.CloseDiff
----@field type "CloseDiff"
 
 --- Ask for the comment text. Submit → CommentSubmitted with the draft.
 ---@class review.Effect.OpenCommentInput
@@ -189,25 +191,32 @@ function M.load_content(generation, root, commit_id, path)
   return { type = "LoadContent", generation = generation, root = root, commit_id = commit_id, path = path }
 end
 
----@return review.Effect.OpenBuffer
----@param opts? review.OpenBufferOpts
-function M.open_buffer(change_id, path, lines, cursor_line, opts)
-  opts = opts or {}
+---@param file review.FileKey
+---@param lines string[]
+---@param mode review.Mode
+---@param file_path string
+---@return review.Effect.PrepareBuffer
+function M.prepare_buffer(file, lines, mode, file_path)
   return {
-    type = "OpenBuffer",
-    change_id = change_id,
-    path = path,
+    type = "PrepareBuffer",
+    file = file,
     lines = lines,
-    cursor_line = cursor_line,
-    keep_view = opts.keep_view or false,
-    mode = opts.mode or "view",
-    file_path = opts.file_path,
+    mode = mode,
+    file_path = file_path,
   }
 end
 
----@return review.Effect.CloseDiff
-function M.close_diff()
-  return { type = "CloseDiff" }
+---@param file review.FileKey
+---@param cursor_line integer
+---@return review.Effect.ShowBuffer
+function M.show_buffer(file, cursor_line)
+  return { type = "ShowBuffer", file = file, cursor_line = cursor_line }
+end
+
+---@param file review.FileKey
+---@return review.Effect.ReleaseBuffer
+function M.release_buffer(file)
+  return { type = "ReleaseBuffer", file = file }
 end
 
 ---@return review.Effect.RenderDiff
