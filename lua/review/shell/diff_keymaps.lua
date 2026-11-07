@@ -64,7 +64,7 @@ end
 local function step_actions(file)
   local function unreviewed(offset)
     return function()
-      return msg.unreviewed_stepped(file.change_id, file.path, vim.fn.line("."), offset)
+      return msg.stepped("unreviewed", file.change_id, file.path, vim.fn.line("."), offset)
     end
   end
   local function other_file(offset)

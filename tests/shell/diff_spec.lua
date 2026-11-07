@@ -188,12 +188,12 @@ describe("shell.diff", function()
     assert.are.same("n", vim.api.nvim_get_mode().mode)
   end)
 
-  it("dispatches UnreviewedStepped on ]r and [r from the cursor line", function()
+  it("dispatches Stepped on ]r and [r from the cursor line", function()
     open(key("abc", "a.txt"), { "1", "2", "3" }, 2)
     vim.api.nvim_feedkeys("]r[r", "x", false)
     assert.are.same({
-      msg.unreviewed_stepped("abc", "a.txt", 2, 1),
-      msg.unreviewed_stepped("abc", "a.txt", 2, -1),
+      msg.stepped("unreviewed", "abc", "a.txt", 2, 1),
+      msg.stepped("unreviewed", "abc", "a.txt", 2, -1),
     }, app.messages)
   end)
 

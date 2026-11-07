@@ -133,7 +133,7 @@ See `core/state.lua` (`review.State`). Main fields: `config`, `open`, `generatio
 
 v0.6 adds `FileSaved{path}`, `SnapshotRequested`, `EditRequested{change_id}`, `CommandFailed{text}`. v0.5 adds `CommentRequested{target}`, `CommentSubmitted{draft, text, id, now}`, `CommentDeleteRequested{change_id,
 path, line}`, `CommentDeleted{id}`; `StoreLoaded` carries comments. v0.4 adds `RefreshRequested` (watcher or focus → `CheckOp` and `LoadStore`). v0.3 has the lifecycle and JJ messages, `StoreLoaded{marks}`, `StoreFailed{error}`, `ToggleRequested{target, now}`,
-`FoldToggled`, `FileOpened`, `FileStepped`, `UnreviewedStepped{change_id, path, line, offset}`. The rest is the plan.
+`FoldToggled`, `FileOpened`, `FileStepped`, `Stepped{unit, change_id, path, line, offset}`. The rest is the plan.
 A failed `jj diff` or `jj file show` is a `JjFailed` (stack error state). Messages that make marks carry `now`
 (core has no clock).
 
@@ -142,7 +142,7 @@ A failed `jj diff` or `jj file show` is a `JjFailed` (stack error state). Messag
 | Lifecycle | `Opened{cwd, revset}`, `Closed`, `Cleared`, `RefreshRequested`, `SnapshotRequested` |
 | JJ | `RootResolved{root}`, `OpChecked{op_id}`, `StackLoaded{revisions}`, `DiffLoaded{commit_id, files}`, `ContentLoaded{commit_id, path, lines}`, `JjFailed{stderr}` |
 | Store | `StoreLoaded{marks, comments}`, `StoreFailed{error}` |
-| Review | `ToggleRequested{target, now}`, `UnreviewedStepped{change_id, path, line, offset}`, `CommentSubmitted{anchor, text}`, `CommentDeleted{id}` |
+| Review | `ToggleRequested{target, now}`, `Stepped{unit, change_id, path, line, offset}` (`unit`: `unreviewed`; the handler picks the line finder per unit, Strategy), `CommentSubmitted{anchor, text}`, `CommentDeleted{id}` |
 | UI | `FoldToggled{change_id}`, `FileOpened{change_id, path}`, `FileStepped{change_id, path, offset}`, `FocusChanged{file?, path?}`, `BufferShown{file}`, `EditRequested{change_id}` |
 
 ## Effects

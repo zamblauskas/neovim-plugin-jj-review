@@ -23,6 +23,13 @@ local function key_of(text, kind)
 end
 
 describe("core.navigation", function()
+  it("steps to the next or previous candidate line, without wrap", function()
+    assert.are.same(5, navigation.step({ 2, 5, 9 }, 2, 1))
+    assert.are.same(2, navigation.step({ 2, 5, 9 }, 5, -1))
+    assert.is_nil(navigation.step({ 2, 5, 9 }, 9, 1))
+    assert.is_nil(navigation.step({}, 1, 1))
+  end)
+
   it("finds the next and previous unreviewed line", function()
     assert.are.same(2, navigation.unreviewed_line(SEGMENTS, {}, 1, 1))
     assert.are.same(7, navigation.unreviewed_line(SEGMENTS, {}, 2, 1))

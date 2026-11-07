@@ -446,9 +446,9 @@ describe("core.update", function()
 
     it("moves the cursor to the next unreviewed change", function()
       local state = update(loaded_state(), msg.content_loaded(1, "b", "a.txt", { "x" }))
-      local _, effects = update(state, msg.unreviewed_stepped("b", "a.txt", 1, -1))
+      local _, effects = update(state, msg.stepped("unreviewed", "b", "a.txt", 1, -1))
       assert.are.same({}, effects)
-      local _, back = update(state, msg.unreviewed_stepped("b", "a.txt", 2, -1))
+      local _, back = update(state, msg.stepped("unreviewed", "b", "a.txt", 2, -1))
       assert.are.same({ effect.move_cursor(1) }, back)
     end)
 

@@ -20,7 +20,7 @@ local M = {}
 ---| review.Msg.StoreLoaded
 ---| review.Msg.StoreFailed
 ---| review.Msg.ToggleRequested
----| review.Msg.UnreviewedStepped
+---| review.Msg.Stepped
 ---| review.Msg.CommentRequested
 ---| review.Msg.CommentSubmitted
 ---| review.Msg.CommentDeleteRequested
@@ -124,13 +124,16 @@ local M = {}
 ---@field target review.Target
 ---@field now string  -- ISO 8601 UTC, for new marks
 
---- Go to the next (`offset` 1) or previous (-1) unreviewed change in the file, from `line`.
----@class review.Msg.UnreviewedStepped
----@field type "UnreviewedStepped"
+--- Go to the next (`offset` 1) or previous (-1) `unit` in the file, from `line`.
+---@class review.Msg.Stepped
+---@field type "Stepped"
+---@field unit review.StepUnit
 ---@field change_id string
 ---@field path string
 ---@field line integer
 ---@field offset integer
+
+---@alias review.StepUnit "unreviewed"
 
 --- A comment key: open the input for a comment on the target.
 ---@class review.Msg.CommentRequested
@@ -290,9 +293,14 @@ function M.toggle_requested(target, now)
   return { type = "ToggleRequested", target = target, now = now }
 end
 
----@return review.Msg.UnreviewedStepped
-function M.unreviewed_stepped(change_id, path, line, offset)
-  return { type = "UnreviewedStepped", change_id = change_id, path = path, line = line, offset = offset }
+---@param unit review.StepUnit
+---@param change_id string
+---@param path string
+---@param line integer
+---@param offset integer
+---@return review.Msg.Stepped
+function M.stepped(unit, change_id, path, line, offset)
+  return { type = "Stepped", unit = unit, change_id = change_id, path = path, line = line, offset = offset }
 end
 
 ---@param target review.Target

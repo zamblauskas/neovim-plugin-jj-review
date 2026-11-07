@@ -22,16 +22,24 @@ local function target_keys(state, target)
   return targets.keys(source.file, #(source.lines or { "" }), target)
 end
 
+--- Line finder per step unit (Strategy): the segments of the file and the state → the line to go to.
+---@type table<review.StepUnit, fun(segments: review.Segment[], state: review.State, msg: review.Msg.Stepped): integer?>
+local STEPPERS = {
+  unreviewed = function(segments, state, msg)
+    return navigation.unreviewed_line(segments, state.marks, msg.line, msg.offset)
+  end,
+}
+
 ---@param state review.State
----@param msg review.Msg.UnreviewedStepped
+---@param msg review.Msg.Stepped
 ---@return review.State, review.Effect[]
-function M.UnreviewedStepped(state, msg)
+function M.Stepped(state, msg)
   local source = lookup.source(state, msg.change_id, msg.path)
   if not (source and source.lines) then
     return state, {}
   end
   local segments = changes.segments(source.file, #source.lines)
-  local line = navigation.unreviewed_line(segments, state.marks, msg.line, msg.offset)
+  local line = STEPPERS[msg.unit](segments, state, msg)
   return state, line and { effect.move_cursor(line) } or {}
 end
 
