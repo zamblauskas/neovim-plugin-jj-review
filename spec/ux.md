@@ -51,8 +51,9 @@ The review follows Vim conventions (netrw, nvim-tree). There is no special diff 
 
 ## Explorer
 
-- Order: newest revision on top (same as `jj log`).
-- Revision row: `change-id-prefix: description   reviewed/total`.
+- Header: one row, `Stack (n) · revset`, the stack count on the right. Then a blank row.
+- Order: newest revision on top (same as `jj log`). A blank row between revisions.
+- Revision row: `change-id-prefix: description   reviewed/total`. The description is bold (`ReviewRevision`).
 - File rows under the revision, grouped by directory (tree). Directories first, then files, sorted by name.
   A directory with one subdirectory and no files is one row (`src/app/service/`). Directory rows have no counts
   and do not fold.
@@ -82,9 +83,10 @@ The review follows Vim conventions (netrw, nvim-tree). There is no special diff 
 
 ```
 ┌─ Explorer ──────────────────────┐
+│ Stack · (trunk()..@)::          │
+│                                 │
 │ ✖ Stack is not linear           │
-│   revset: (trunk()..@)::        │
-│   heads: uxl, mzo               │
+│   revisions: uxl, mzo           │
 └─────────────────────────────────┘
 ```
 

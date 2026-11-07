@@ -22,6 +22,11 @@ local TEXT = {
 }
 local TEXT_ALPHA = 0.5
 
+--- Groups with their own attributes, not links.
+local ATTRIBUTES = {
+  ReviewRevision = { bold = true },
+}
+
 local LINKS = {
   ReviewHeader = "Title",
   ReviewDim = "Comment",
@@ -76,6 +81,9 @@ end
 function M.setup()
   for group, target in pairs(LINKS) do
     vim.api.nvim_set_hl(0, group, { link = target, default = true })
+  end
+  for group, attributes in pairs(ATTRIBUTES) do
+    vim.api.nvim_set_hl(0, group, vim.tbl_extend("force", attributes, { default = true }))
   end
   for group, spec in pairs(DIMMED) do
     vim.api.nvim_set_hl(0, group, dimmed(spec.base, spec.alpha))

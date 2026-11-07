@@ -112,7 +112,8 @@ end
 ---@return review.Row
 local function revision_row(rev, open, count, icons)
   local rest = rev.short_id:sub(#rev.id_prefix + 1)
-  local description = rev.description ~= "" and { rev.description } or { "(no description)", "ReviewDim" }
+  local description = rev.description ~= "" and { rev.description, "ReviewRevision" }
+    or { "(no description)", "ReviewDim" }
   return vim.list_extend({ { open and "▾ " or "▸ ", "ReviewFold" }, unpack(done_icon(count, icons)) }, {
     working_copy_chunk(rev, icons),
     { rev.id_prefix, "ReviewChangeId" },
@@ -132,9 +133,9 @@ end
 ---@return review.ExplorerEntry[]
 local function header_entries(state)
   local size = state.stack.type == "ok" and (" (" .. #state.stack.revisions .. ")") or ""
+  local title = { { "Stack" .. size, "ReviewHeader" }, { " · " .. state.revset, "ReviewDim" } }
   return {
-    { chunks = { { "Stack" .. size, "ReviewHeader" } }, right = count_chunks(stack_count(state)) },
-    { chunks = { { "revset: " .. state.revset, "ReviewDim" } } },
+    { chunks = title, right = count_chunks(stack_count(state)) },
     { chunks = {} },
   }
 end
@@ -226,7 +227,7 @@ end
 ---@return review.ExplorerEntry[]
 local function revision_entries(ctx, revisions)
   local entries, state = {}, ctx.state
-  for _, rev in ipairs(revisions) do
+  for i, rev in ipairs(revisions) do
     local open = folds.is_open(state.folds, state.fold_default, revisions, rev.change_id)
     local files = state.diffs[rev.commit_id]
     local count = files and counts.files(files, state.marks)
@@ -238,6 +239,9 @@ local function revision_entries(ctx, revisions)
     })
     if open then
       vim.list_extend(entries, file_entries(ctx, rev))
+    end
+    if i < #revisions then
+      table.insert(entries, { chunks = {} })
     end
   end
   return entries

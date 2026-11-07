@@ -147,6 +147,9 @@ All groups link to standard groups by default. Override them in your color schem
 | `ReviewStatusAdded` / `Modified` / `Deleted` / `Renamed` | `Added` / `Changed` / `Removed` / `Special` |
 | `ReviewChangeId` / `ReviewChangeIdRest` | `Special` / `Comment` |
 | `ReviewCurrent` (explorer row of the file in the last focused window) | `Visual` |
+| `ReviewReviewedRow` (explorer row of a reviewed file) | `Comment` |
+| `ReviewRevision` (description of a revision) | bold |
+| `ReviewGuide` (tree guide lines) | `Comment` |
 | `ReviewWorkingCopy`, `ReviewHeader`, `ReviewDim`, `ReviewError`, `ReviewFold`, `ReviewDirectory` | see `lua/review/shell/highlights.lua` |
 
 ## Files for the agent
