@@ -186,7 +186,7 @@ describe("view.explorer", function()
       assert.are.same("Stack (1) · trunk()..@" .. string.rep(" ", 15) .. "1/2", v.lines[1])
       assert.are.same(40, vim.fn.strdisplaywidth(v.lines[3]))
       assert.truthy(v.lines[3]:find("1/2$"))
-      assert.are.same("  ├ A a" .. string.rep(" ", 31) .. "✅", v.lines[4])
+      assert.are.same("  ├ A a" .. string.rep(" ", 32) .. "✓", v.lines[4])
     end)
 
     it("shows the total of a file until its review starts, then the progress, then the reviewed icon", function()
@@ -199,7 +199,7 @@ describe("view.explorer", function()
       end
       assert.are.same("2", right({}))
       assert.are.same("1/2", right({ a = { created = "t" } }))
-      assert.are.same("✅", right({ a = { created = "t" }, a2 = { created = "t" } }))
+      assert.are.same("✓", right({ a = { created = "t" }, a2 = { created = "t" } }))
     end)
 
     it("dims the row of a reviewed file and drops the status color", function()
@@ -217,7 +217,7 @@ describe("view.explorer", function()
 
     it("marks a done revision", function()
       local v = view_of(counted_state({ a = { created = "t" }, b = { created = "t" } }))
-      assert.truthy(v.lines[3]:find("^▾ ✅ "))
+      assert.truthy(v.lines[3]:find("^▾ ✓ "))
     end)
 
     it("has no stack count while a diff loads", function()
@@ -258,23 +258,23 @@ describe("view.explorer", function()
       return view_of(tbl.with(state, { diffs = { uxlm = { file("added", "a") } }, comments = list }))
     end
 
-    it("shows 💬 after the name, with the count aligned at the end", function()
+    it("shows ● after the name, with the count aligned at the end", function()
       local v = render({ comment({}) })
-      assert.truthy(v.lines[3]:find("x 💬 +0/1$"))
-      assert.truthy(v.lines[4]:find("A a 💬 +1$"))
+      assert.truthy(v.lines[3]:find("x ● +0/1$"))
+      assert.truthy(v.lines[4]:find("A a ● +1$"))
       assert.are.same(WIDTH, vim.fn.strdisplaywidth(v.lines[4]))
     end)
 
-    it("shows ⚠ for an outdated comment", function()
+    it("shows ▲ for an outdated comment", function()
       local v = render({ comment({ keys = { "+|a|gone|1" } }) })
-      assert.truthy(v.lines[4]:find("A a 💬 ⚠ +1$"))
+      assert.truthy(v.lines[4]:find("A a ● ▲ +1$"))
     end)
 
-    it("cuts a long name but keeps 💬 and the count", function()
+    it("cuts a long name but keeps ● and the count", function()
       local state = state_with({ type = "ok", revisions = { rev("uxlm", string.rep("d", 60)) } })
       local v = view_of(tbl.with(state, { diffs = { uxlm = { file("added", "a") } }, comments = { comment({}) } }))
       assert.are.same(WIDTH, vim.fn.strdisplaywidth(v.lines[3]))
-      assert.truthy(v.lines[3]:find("d… 💬 0/1$"))
+      assert.truthy(v.lines[3]:find("d… ● 0/1$"))
     end)
 
     it("lists orphaned comments at the bottom with a target", function()
@@ -286,7 +286,7 @@ describe("view.explorer", function()
           anchor = { type = "line", side = "+", start_line = 42, end_line = 42 },
         }),
       })
-      assert.are.same({ "", "Orphaned comments (1)", '  ⚠ old.txt:42 "why"' }, vim.list_slice(v.lines, 5))
+      assert.are.same({ "", "Orphaned comments (1)", '  ▲ old.txt:42 "why"' }, vim.list_slice(v.lines, 5))
       assert.are.same({ type = "comment", id = "c1" }, v.targets[7])
     end)
 

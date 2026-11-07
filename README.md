@@ -119,9 +119,9 @@ require("review").setup({
     toggle_removed = "<leader>r-",
   },
   icons = {
-    reviewed = "✅",
-    comment = "💬",
-    warning = "⚠",
+    reviewed = "✓",
+    comment = "●",
+    warning = "▲",
     working_copy = "◆",
     mark = "✓",
   },

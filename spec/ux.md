@@ -4,17 +4,19 @@
 
 ```
 ┌─ Explorer ──────────────────────┬─ Diff: uxl · src/app/service/controller.ts ───────┐
-│ Stack 156/465                   │                                                   │
+│ Stack (3) · trunk()..@  156/465 │                                                   │
 │                                 │                                                   │
-│ ▸ uxl: final fixes     12/321   │  (see "Diff view")                                │
-│ ▾ kpt: add service 💬     0/68  │                                                   │
-│   src/app/service/              │                                                   │
-│     controller.ts 💬      0/56  │                                                   │
-│     index.ts           0/12     │                                                   │
-│ ▸ ✅ jrg: base model  144/144   │                                                   │
+│ ▸ uxl: final fixes       12/321 │  (see "Diff view")                                │
+│                                 │                                                   │
+│ ▾ kpt: add service ●       0/68 │                                                   │
+│   └ src/app/service/            │                                                   │
+│     ├ M controller.ts ●      56 │                                                   │
+│     └ M index.ts              ✓ │  (dimmed: reviewed)                               │
+│                                 │                                                   │
+│ ▸ ✓ jrg: base model     144/144 │                                                   │
 │                                 │                                                   │
 │ Orphaned comments (1)           │                                                   │
-│   ⚠ user.ts:42 "rename this"    │                                                   │
+│   ▲ user.ts:42 "rename this"    │                                                   │
 └─────────────────────────────────┴───────────────────────────────────────────────────┘
 ```
 
@@ -66,9 +68,9 @@ The review follows Vim conventions (netrw, nvim-tree). There is no special diff 
   - File row: `total` until the review of the file starts, then `reviewed/total`, then the reviewed icon when
     the file is done. A done file row is dimmed as a whole (`ReviewReviewedRow`), its status letter has no color.
 - Icons:
-  - `✅` everything reviewed (file: on the right instead of the count; revision: before the id).
-  - `💬` one comment or more in the file or revision.
-  - `⚠` outdated or orphaned comment.
+  - `✓` everything reviewed (file: on the right instead of the count; revision: before the id).
+  - `●` one comment or more in the file or revision.
+  - `▲` outdated or orphaned comment.
   - `◆` revision is the working copy (`@`).
 - Default fold: only the oldest revision with unreviewed lines is unfolded. It is computed once per stack load,
   when all diffs are loaded, so a revision does not close while you review it. Before that, the oldest revision is
@@ -76,8 +78,9 @@ The review follows Vim conventions (netrw, nvim-tree). There is no special diff 
 - Counts are right-aligned to the text width of the explorer window. The rows render again when the window
   width changes. A long name is cut with `…`. The stack count shows when all
   diffs are loaded.
-- `💬` and `⚠` come after the name. A long name is cut before them, so they stay visible.
-- Orphaned comments section at the bottom: `⚠ path:line "first line of the text"`. Hidden if empty.
+- `●` and `▲` come after the name. A long name is cut before them, so they stay visible.
+- Orphaned comments section at the bottom: `▲ path:line "first line of the text"`. Hidden if empty.
+- Icons are `config.icons`. The defaults are single-width, so columns stay aligned in every terminal.
 
 ### Error state
 
@@ -102,7 +105,7 @@ Overlay on one buffer. The plugin draws all of it with its own extmarks.
         │-  return b;
  ✓ 11   │+  let a = read_all();         ← reviewed: sign ✓, dimmed
    12   │+  validate(a);
-        │   💬 Why validate here and not in read_all?   ← comment (virtual lines)
+        │   ● Why validate here and not in read_all?    ← comment (virtual lines)
    13   │+  return a;
    14   │ }
 ```
@@ -118,8 +121,8 @@ Visual states:
 | Removed block, partly reviewed | `3/4` in the gutter of the first line |
 | Line of a new file, block of a deleted file | Lighter background (25%), lighter still when reviewed (10%): the whole file is one change |
 | Replaced line | Changed tokens of the removed line and of the added line get a stronger background |
-| Comment | Virtual lines below the last line of the anchor, `💬` prefix, from the left edge with the gutter |
-| Outdated comment | Virtual lines at the original line number, `⚠ outdated` prefix, other color |
+| Comment | Virtual lines below the last line of the anchor, `●` prefix, from the left edge with the gutter |
+| Outdated comment | Virtual lines at the original line number, `▲ outdated` prefix, other color |
 
 Dim can be turned off in config (`dim_reviewed = false`). Dim colors are a 50% blend of `DiffAdd` / `DiffDelete`
 with the `Normal` background. Removed lines start at the left edge with a gutter, so their text aligns with the

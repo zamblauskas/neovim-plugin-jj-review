@@ -8,7 +8,7 @@ describe("config", function()
 
   it("merges user options over the defaults", function()
     local c = config.resolve({ explorer_width = 50, keymaps = { toggle = "<leader>x" }, icons = { mark = "+" } })
-    assert.are.same({ 50, "<leader>x", "<leader>rR", "+", "✅" }, {
+    assert.are.same({ 50, "<leader>x", "<leader>rR", "+", "✓" }, {
       c.explorer_width,
       c.keymaps.toggle,
       c.keymaps.toggle_block,

@@ -195,15 +195,15 @@ describe("view.diff", function()
       assert.is_true(mark.opts.virt_lines_leftcol)
       assert.is_falsy(mark.opts.virt_lines_above)
       assert.are.same({
-        { { "   " }, { "💬 why", "ReviewComment" } },
-        { { "   " }, { "   here", "ReviewComment" } },
+        { { "   " }, { "● why", "ReviewComment" } },
+        { { "   " }, { "  here", "ReviewComment" } },
       }, mark.opts.virt_lines)
     end)
 
     it("draws an outdated comment with its own style, clamped to the buffer", function()
       local mark = view.render(f, input({ line_count = 2, comments = { placement("outdated", 9) } })).extmarks[2]
       assert.are.same(1, mark.row)
-      assert.are.same({ "⚠ outdated: why", "ReviewCommentOutdated" }, assert(mark.opts.virt_lines)[1][2])
+      assert.are.same({ "▲ outdated: why", "ReviewCommentOutdated" }, assert(mark.opts.virt_lines)[1][2])
     end)
   end)
 end)
