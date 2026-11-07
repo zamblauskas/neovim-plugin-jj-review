@@ -24,9 +24,11 @@ M.SECTIONS = {
     keys = {
       { "toggle", "Toggle reviewed: line, or visual range" },
       { "toggle_block", "Toggle reviewed: removed block at the line" },
+      { "toggle_hunk", "Toggle reviewed: hunk at the line" },
       { "toggle_file", "Toggle reviewed: file" },
       { "comment", "Comment: line, or visual range" },
       { "comment_block", "Comment: removed block at the line" },
+      { "comment_hunk", "Comment: hunk at the line" },
       { "delete_comment", "Delete comment at the line" },
       { "next_unreviewed", "Next unreviewed change" },
       { "prev_unreviewed", "Previous unreviewed change" },

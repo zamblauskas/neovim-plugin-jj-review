@@ -281,7 +281,7 @@ require("review").setup({
   dim_reviewed = true,
   max_parallel_jj = 4,
   explorer_width = 40,
-  keymaps = { toggle = "<leader>rr", ... },  -- a key set to false is not mapped
+  keymaps = { toggle = "<leader>rr", toggle_hunk = "<leader>rh", ... },  -- a key set to false is not mapped
   icons = { reviewed = "✅", comment = "💬", warning = "⚠", working_copy = "◆", mark = "✓" },
 })
 ```

@@ -21,9 +21,11 @@ local M = {}
 ---@field edit string|false            -- explorer: make the revision under the cursor the working copy
 ---@field toggle string|false          -- diff buffer: line or visual range
 ---@field toggle_block string|false    -- diff buffer: removed block at the cursor line
+---@field toggle_hunk string|false     -- diff buffer: hunk at the cursor line
 ---@field toggle_file string|false     -- diff buffer and explorer: file
 ---@field comment string|false         -- diff buffer: comment on the line or visual range
 ---@field comment_block string|false   -- diff buffer: comment on the removed block at the cursor line
+---@field comment_hunk string|false    -- diff buffer: comment on the hunk at the cursor line
 ---@field delete_comment string|false  -- diff buffer: comment at the cursor line; explorer: orphaned comment
 ---@field next_unreviewed string|false -- diff buffer: next unreviewed change in the file
 ---@field prev_unreviewed string|false -- diff buffer: previous unreviewed change in the file
@@ -54,15 +56,17 @@ M.defaults = {
     edit = "<leader>re",
     toggle = "<leader>rr",
     toggle_block = "<leader>rR",
+    toggle_hunk = "<leader>rh",
     toggle_file = "<leader>rf",
     comment = "<leader>rc",
     comment_block = "<leader>rC",
+    comment_hunk = "<leader>rH",
     delete_comment = "<leader>rx",
     next_unreviewed = "]r",
     prev_unreviewed = "[r",
     next_file = "]R",
     prev_file = "[R",
-    toggle_removed = "<leader>rh",
+    toggle_removed = "<leader>r-",
   },
   icons = {
     reviewed = "✅",

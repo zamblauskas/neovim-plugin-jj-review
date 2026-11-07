@@ -168,10 +168,10 @@ describe("shell.diff", function()
     assert.are.same({ msg.file_stepped("abc", "a.txt", 1), msg.file_stepped("abc", "a.txt", -1) }, app.messages)
   end)
 
-  it("dispatches toggles for the line, the block, the file and a visual range", function()
+  it("dispatches toggles for the line, the block, the hunk, the file and a visual range", function()
     open(key("abc", "a.txt"), { "1", "2", "3" }, 2)
     vim.api.nvim_feedkeys(
-      vim.keycode("<leader>rr<leader>rR<leader>rf") .. "Vj" .. vim.keycode("<leader>rr"),
+      vim.keycode("<leader>rr<leader>rR<leader>rh<leader>rf") .. "Vj" .. vim.keycode("<leader>rr"),
       "x",
       false
     )
@@ -181,6 +181,7 @@ describe("shell.diff", function()
     assert.are.same({
       { type = "line", change_id = "abc", path = "a.txt", line = 2 },
       { type = "block", change_id = "abc", path = "a.txt", line = 2 },
+      { type = "hunk", change_id = "abc", path = "a.txt", line = 2 },
       { type = "file", change_id = "abc", path = "a.txt" },
       { type = "range", change_id = "abc", path = "a.txt", first = 2, last = 3 },
     }, got)
@@ -251,7 +252,7 @@ describe("shell.diff", function()
   it("dispatches comment messages", function()
     open(key("abc", "a.txt"), { "1", "2", "3" }, 2)
     vim.api.nvim_feedkeys(
-      vim.keycode("<leader>rc<leader>rC<leader>rx") .. "Vj" .. vim.keycode("<leader>rc"),
+      vim.keycode("<leader>rc<leader>rC<leader>rH<leader>rx") .. "Vj" .. vim.keycode("<leader>rc"),
       "x",
       false
     )
@@ -259,6 +260,7 @@ describe("shell.diff", function()
     assert.are.same({
       msg.comment_requested(vim.tbl_extend("force", base, { type = "line", line = 2 })),
       msg.comment_requested(vim.tbl_extend("force", base, { type = "block", line = 2 })),
+      msg.comment_requested(vim.tbl_extend("force", base, { type = "hunk", line = 2 })),
       msg.comment_delete_requested("abc", "a.txt", 2),
       msg.comment_requested(vim.tbl_extend("force", base, { type = "range", first = 2, last = 3 })),
     }, app.messages)

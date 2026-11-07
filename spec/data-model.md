@@ -93,8 +93,8 @@ A hunk is a jj hunk (`--context 2`): changes at most 4 unchanged lines apart for
 ## Toggle rules
 
 Keys of the selection: added lines in the lines, and the removed blocks attached to them when the selection
-includes them; or the keys of the segments. If one or more keys are unmarked, mark all. Else unmark all. A line without a key (context, blank)
-has nothing to toggle.
+includes them; or the keys of the segments. If one or more keys are unmarked, mark all. Else unmark all. A line
+without a key (context, blank) has nothing to toggle.
 
 ## Comments
 

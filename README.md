@@ -32,7 +32,8 @@ lazy.nvim:
 2. The explorer shows the stack, newest revision on top, with `reviewed/total` lines per file and revision.
    The oldest revision with unreviewed lines is open.
 3. `<CR>` on a file opens its diff. Added lines are green. Removed lines are red virtual lines.
-4. Mark lines with `<leader>rr` (line, or visual range). Go to the next unreviewed change with `]r`.
+4. Mark lines with `<leader>rr` (line, or visual range), or a whole hunk with `<leader>rh`. Go to the next
+   unreviewed change with `]r`.
 5. Write a comment with `<leader>rc`. `<C-s>` saves it.
 6. The agent rewrites the stack. The review refreshes on each jj operation. Marks stay on lines that did not change.
 
@@ -73,13 +74,15 @@ Diff buffer:
 |---|---|
 | `<leader>rr` | Toggle reviewed: line, or visual range |
 | `<leader>rR` | Toggle reviewed: removed block at the line |
+| `<leader>rh` | Toggle reviewed: hunk at the line |
 | `<leader>rf` | Toggle reviewed: file |
 | `<leader>rc` | Comment: line, or visual range |
 | `<leader>rC` | Comment: removed block at the line |
+| `<leader>rH` | Comment: hunk at the line |
 | `<leader>rx` | Delete the comment at the line |
 | `]r` / `[r` | Next / previous unreviewed change in the file |
 | `]R` / `[R` | Next / previous file in the revision |
-| `<leader>rh` | Show / hide removed lines (the buffer then reads as the file at the revision) |
+| `<leader>r-` | Show / hide removed lines (the buffer then reads as the file at the revision) |
 
 Global: `<leader>jvv` opens, `<leader>jvq` closes.
 
@@ -103,15 +106,17 @@ require("review").setup({
     edit = "<leader>re",
     toggle = "<leader>rr",
     toggle_block = "<leader>rR",
+    toggle_hunk = "<leader>rh",
     toggle_file = "<leader>rf",
     comment = "<leader>rc",
     comment_block = "<leader>rC",
+    comment_hunk = "<leader>rH",
     delete_comment = "<leader>rx",
     next_unreviewed = "]r",
     prev_unreviewed = "[r",
     next_file = "]R",
     prev_file = "[R",
-    toggle_removed = "<leader>rh",
+    toggle_removed = "<leader>r-",
   },
   icons = {
     reviewed = "✅",

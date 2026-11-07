@@ -153,10 +153,12 @@ Buffer-local. Only in review buffers.
 |---|---|
 | `<leader>rr` | Toggle reviewed: line, or visual range |
 | `<leader>rR` | Toggle reviewed: removed block attached to the cursor line (above or below it) |
+| `<leader>rh` | Toggle reviewed: every change of the hunk at the cursor line (a jj hunk: changes at most 4 unchanged lines apart). The cursor can be on a context line of the hunk. Nothing between hunks. |
 | `<leader>rf` | Toggle reviewed: file |
 | `<leader>rc` | Add comment: line, or visual range. Unchanged lines are allowed. |
 | `<leader>rC` | Add comment: removed block above the cursor |
-| `<leader>rh` | Show / hide removed blocks. Hidden: the buffer reads as the file at the revision. Marks and comments stay. |
+| `<leader>rH` | Add comment: the changes of the hunk at the cursor line. Shown below its last change. |
+| `<leader>r-` | Show / hide removed blocks. Hidden: the buffer reads as the file at the revision. Marks and comments stay. |
 | `<leader>rx` | Delete the comment shown at the cursor line (the first one if there are more) |
 | `]r` / `[r` | Next / previous unreviewed line or block, in this file only. No wrap. A block: its attach line. |
 | `]R` / `[R` | Next / previous file in the revision |
