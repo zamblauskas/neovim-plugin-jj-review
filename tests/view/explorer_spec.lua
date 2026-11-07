@@ -55,7 +55,7 @@ end
 ---@param line string
 ---@return string
 local function left(line)
-  return line:match("^(.-)%s+%d+/%d+$") or line
+  return line:match("^(.-)%s+[%d/]+$") or line
 end
 
 describe("view.explorer", function()
@@ -177,7 +177,33 @@ describe("view.explorer", function()
       assert.are.same("Stack (1)" .. string.rep(" ", 28) .. "1/2", v.lines[1])
       assert.are.same(40, vim.fn.strdisplaywidth(v.lines[4]))
       assert.truthy(v.lines[4]:find("1/2$"))
-      assert.are.same("  ├ ✅ A a" .. string.rep(" ", 27) .. "1/1", v.lines[5])
+      assert.are.same("  ├ A a" .. string.rep(" ", 31) .. "✅", v.lines[5])
+    end)
+
+    it("shows the total of a file until its review starts, then the progress, then the reviewed icon", function()
+      local state = state_with({ type = "ok", revisions = { rev("uxlm", "x") } })
+      local a = file("added", "a")
+      table.insert(a.hunks[1].lines, { kind = "+", text = "y", key = "a2" })
+      state = tbl.with(state, { diffs = { uxlm = { a } } })
+      local function right(marks)
+        return view_of(tbl.with(state, { marks = marks })).lines[5]:match("%S+$")
+      end
+      assert.are.same("2", right({}))
+      assert.are.same("1/2", right({ a = { created = "t" } }))
+      assert.are.same("✅", right({ a = { created = "t" }, a2 = { created = "t" } }))
+    end)
+
+    it("dims the row of a reviewed file and drops the status color", function()
+      local v = view_of(counted_state({ a = { created = "t" } }))
+      local groups = vim.tbl_map(
+        function(h)
+          return h.group
+        end,
+        vim.tbl_filter(function(h)
+          return h.row == 4
+        end, v.highlights)
+      )
+      assert.are.same({ "ReviewReviewedRow", "ReviewGuide", "ReviewDone" }, groups)
     end)
 
     it("marks a done revision", function()
@@ -226,13 +252,13 @@ describe("view.explorer", function()
     it("shows 💬 after the name, with the count aligned at the end", function()
       local v = render({ comment({}) })
       assert.truthy(v.lines[4]:find("x 💬 +0/1$"))
-      assert.truthy(v.lines[5]:find("A a 💬 +0/1$"))
+      assert.truthy(v.lines[5]:find("A a 💬 +1$"))
       assert.are.same(WIDTH, vim.fn.strdisplaywidth(v.lines[5]))
     end)
 
     it("shows ⚠ for an outdated comment", function()
       local v = render({ comment({ keys = { "+|a|gone|1" } }) })
-      assert.truthy(v.lines[5]:find("A a 💬 ⚠ +0/1$"))
+      assert.truthy(v.lines[5]:find("A a 💬 ⚠ +1$"))
     end)
 
     it("cuts a long name but keeps 💬 and the count", function()

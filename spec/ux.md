@@ -61,8 +61,11 @@ The review follows Vim conventions (netrw, nvim-tree). There is no special diff 
 - File row: colored status letter (`A`, `M`, `D`, `R`, `C`), name, `← old/path` for a rename or copy,
   `(binary)` for a binary file.
 - Counts: `reviewed / total` reviewable lines. Binary file: `0/1` or `1/1`.
+  - Revision row: always `reviewed/total`.
+  - File row: `total` until the review of the file starts, then `reviewed/total`, then the reviewed icon when
+    the file is done. A done file row is dimmed as a whole (`ReviewReviewedRow`), its status letter has no color.
 - Icons:
-  - `✅` everything reviewed (file or revision).
+  - `✅` everything reviewed (file: on the right instead of the count; revision: before the id).
   - `💬` one comment or more in the file or revision.
   - `⚠` outdated or orphaned comment.
   - `◆` revision is the working copy (`@`).

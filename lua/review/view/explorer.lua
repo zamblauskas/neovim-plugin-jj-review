@@ -15,6 +15,7 @@ local M = {}
 ---@field icons? review.Row  -- after the left part, never cut (comment icons)
 ---@field right? review.Row  -- right-aligned (counts)
 ---@field target? review.ExplorerTarget
+---@field dim? boolean        -- the whole row is dimmed (reviewed file)
 
 local TREE_INDENT = "  "
 
@@ -42,6 +43,19 @@ local function count_chunks(count)
   end
   local group = counts.is_done(count) and "ReviewDone" or "ReviewCount"
   return { { count.reviewed .. "/" .. count.total, group } }
+end
+
+--- Right part of a file row: the total until the review starts, then the progress, then the reviewed icon.
+---@param count review.Count
+---@param icons review.IconConfig
+---@return review.Row
+local function file_count_chunks(count, icons)
+  if counts.is_done(count) then
+    return { { icons.reviewed, "ReviewDone" } }
+  elseif count.reviewed == 0 then
+    return { { tostring(count.total), "ReviewCount" } }
+  end
+  return { { count.reviewed .. "/" .. count.total, "ReviewCount" } }
 end
 
 --- Comment icon when a comment is shown there, warning icon when one of them is outdated.
@@ -182,13 +196,14 @@ local function tree_entry(entry, change_id, ctx)
   end
   local file = assert(entry.file, "file entry")
   local status, count = STATUS[file.status], counts.file(file, ctx.state.marks)
-  local chunks = { guide, unpack(done_icon(count, ctx.state.config.icons)) }
-  vim.list_extend(chunks, { { status[1] .. " ", status[2] }, { entry.name } })
+  local done = counts.is_done(count)
+  local chunks = { guide, { status[1] .. " ", not done and status[2] or nil }, { entry.name } }
   return {
     chunks = vim.list_extend(chunks, file_suffix(file)),
     icons = comment_icons(placements_at(ctx, change_id, file.path), ctx.state.config.icons),
-    right = count_chunks(count),
+    right = file_count_chunks(count, ctx.state.config.icons),
     target = { type = "file", change_id = change_id, path = file.path },
+    dim = done,
   }
 end
 
@@ -337,18 +352,34 @@ local function fit(entry, width)
   return vim.list_extend(vim.list_extend(left, { { string.rep(" ", pad) } }), entry.right)
 end
 
---- Line highlight for the row of the current file (the review buffer in the last focused window), else none.
 ---@param target review.ExplorerTarget?
 ---@param current review.FileKey?
----@param row integer  0-based
----@return review.Highlight[]
-local function current_highlight(target, current, row)
-  local is_current = target ~= nil
+---@return boolean
+local function is_current(target, current)
+  return target ~= nil
     and current ~= nil
     and target.type == "file"
     and target.change_id == current.change_id
     and target.path == current.path
-  return is_current and { { row = row, col_start = 0, col_end = 0, group = "ReviewCurrent", line = true } } or {}
+end
+
+--- Line highlights of a row: dimmed when the file is reviewed, `ReviewCurrent` when the file is the current one
+--- (the review buffer in the last focused window).
+---@param entry review.ExplorerEntry
+---@param current review.FileKey?
+---@param row integer  0-based
+---@return review.Highlight[]
+local function line_highlights(entry, current, row)
+  local groups = {}
+  if entry.dim then
+    table.insert(groups, "ReviewReviewedRow")
+  end
+  if is_current(entry.target, current) then
+    table.insert(groups, "ReviewCurrent")
+  end
+  return vim.tbl_map(function(group)
+    return { row = row, col_start = 0, col_end = 0, group = group, line = true }
+  end, groups)
 end
 
 ---@param state review.State
@@ -361,7 +392,7 @@ function M.render(state, width)
   for i, entry in ipairs(entries) do
     local text, highlights = row_lib.flatten(fit(entry, width), i - 1)
     table.insert(view.lines, text)
-    vim.list_extend(view.highlights, current_highlight(entry.target, state.current, i - 1))
+    vim.list_extend(view.highlights, line_highlights(entry, state.current, i - 1))
     vim.list_extend(view.highlights, highlights)
     view.targets[i] = entry.target
   end
