@@ -62,9 +62,9 @@ end
 ---@param file review.FileKey
 ---@return table<string, fun(): review.Msg>
 local function step_actions(file)
-  local function unreviewed(offset)
+  local function stepped(unit, offset)
     return function()
-      return msg.stepped("unreviewed", file.change_id, file.path, vim.fn.line("."), offset)
+      return msg.stepped(unit, file.change_id, file.path, vim.fn.line("."), offset)
     end
   end
   local function other_file(offset)
@@ -73,8 +73,10 @@ local function step_actions(file)
     end
   end
   return {
-    next_unreviewed = unreviewed(1),
-    prev_unreviewed = unreviewed(-1),
+    next_unreviewed = stepped("unreviewed", 1),
+    prev_unreviewed = stepped("unreviewed", -1),
+    next_hunk = stepped("hunk", 1),
+    prev_hunk = stepped("hunk", -1),
     next_file = other_file(1),
     prev_file = other_file(-1),
   }

@@ -452,6 +452,12 @@ describe("core.update", function()
       assert.are.same({ effect.move_cursor(1) }, back)
     end)
 
+    it("moves the cursor to the next hunk", function()
+      local state = update(loaded_state(), msg.content_loaded(1, "b", "a.txt", { "x" }))
+      local _, effects = update(state, msg.stepped("hunk", "b", "a.txt", 0, 1))
+      assert.are.same({ effect.move_cursor(1) }, effects)
+    end)
+
     it("ignores an unknown file", function()
       local state = loaded_state()
       local next_state, effects = update(state, msg.file_opened("b", "nope"))

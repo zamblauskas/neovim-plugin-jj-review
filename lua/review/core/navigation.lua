@@ -47,4 +47,26 @@ function M.unreviewed_line(segments, marks, line, offset)
   return M.step(lines, line, offset)
 end
 
+--- First line of each hunk (its first segment), ascending.
+---@param segments review.Segment[]
+---@return integer[]
+local function hunk_lines(segments)
+  local first = {}
+  for _, segment in ipairs(segments) do
+    first[segment.hunk] = math.min(first[segment.hunk] or segment.line, segment.line)
+  end
+  local lines = vim.tbl_values(first)
+  table.sort(lines)
+  return lines
+end
+
+--- Line of the next (`offset` > 0) or previous (`offset` < 0) hunk after `line`: its first change.
+---@param segments review.Segment[]
+---@param line integer
+---@param offset integer
+---@return integer?
+function M.hunk_line(segments, line, offset)
+  return M.step(hunk_lines(segments), line, offset)
+end
+
 return M

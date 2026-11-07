@@ -81,6 +81,7 @@ Diff buffer:
 | `<leader>rH` | Comment: hunk at the line |
 | `<leader>rx` | Delete the comment at the line |
 | `]r` / `[r` | Next / previous unreviewed change in the file |
+| `]h` / `[h` | Next / previous hunk in the file |
 | `]R` / `[R` | Next / previous file in the revision |
 | `<leader>r-` | Show / hide removed lines (the buffer then reads as the file at the revision) |
 
@@ -114,6 +115,8 @@ require("review").setup({
     delete_comment = "<leader>rx",
     next_unreviewed = "]r",
     prev_unreviewed = "[r",
+    next_hunk = "]h",
+    prev_hunk = "[h",
     next_file = "]R",
     prev_file = "[R",
     toggle_removed = "<leader>r-",

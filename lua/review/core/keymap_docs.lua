@@ -32,6 +32,8 @@ M.SECTIONS = {
       { "delete_comment", "Delete comment at the line" },
       { "next_unreviewed", "Next unreviewed change" },
       { "prev_unreviewed", "Previous unreviewed change" },
+      { "next_hunk", "Next hunk" },
+      { "prev_hunk", "Previous hunk" },
       { "next_file", "Next file in the revision" },
       { "prev_file", "Previous file in the revision" },
       { "toggle_removed", "Show / hide removed lines" },

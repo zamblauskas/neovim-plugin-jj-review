@@ -133,7 +133,7 @@ local M = {}
 ---@field line integer
 ---@field offset integer
 
----@alias review.StepUnit "unreviewed"
+---@alias review.StepUnit "unreviewed"|"hunk"
 
 --- A comment key: open the input for a comment on the target.
 ---@class review.Msg.CommentRequested

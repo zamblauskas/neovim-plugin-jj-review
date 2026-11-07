@@ -29,6 +29,8 @@ local M = {}
 ---@field delete_comment string|false  -- diff buffer: comment at the cursor line; explorer: orphaned comment
 ---@field next_unreviewed string|false -- diff buffer: next unreviewed change in the file
 ---@field prev_unreviewed string|false -- diff buffer: previous unreviewed change in the file
+---@field next_hunk string|false       -- diff buffer: next hunk in the file
+---@field prev_hunk string|false       -- diff buffer: previous hunk in the file
 ---@field next_file string|false       -- diff buffer: next file in the revision
 ---@field prev_file string|false       -- diff buffer: previous file in the revision
 ---@field toggle_removed string|false  -- diff buffer: show or hide the removed blocks
@@ -64,6 +66,8 @@ M.defaults = {
     delete_comment = "<leader>rx",
     next_unreviewed = "]r",
     prev_unreviewed = "[r",
+    next_hunk = "]h",
+    prev_hunk = "[h",
     next_file = "]R",
     prev_file = "[R",
     toggle_removed = "<leader>r-",

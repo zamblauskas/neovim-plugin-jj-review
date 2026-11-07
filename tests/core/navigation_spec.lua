@@ -46,6 +46,28 @@ describe("core.navigation", function()
     assert.are.same(7, navigation.unreviewed_line(SEGMENTS, marks, 2, 1))
   end)
 
+  it("finds the next and previous hunk by its first change", function()
+    local two_hunks = keys.annotate(parse.parse(table.concat({
+      "diff --git a/f b/f",
+      "--- a/f",
+      "+++ b/f",
+      "@@ -1,2 +1,2 @@",
+      " a",
+      "-b",
+      "+B",
+      "@@ -20,2 +20,3 @@",
+      " x",
+      "+y",
+      "+z",
+      "",
+    }, "\n"))[1])
+    local segments = changes.segments(two_hunks, 22)
+    assert.are.same(2, navigation.hunk_line(segments, 1, 1))
+    assert.are.same(21, navigation.hunk_line(segments, 2, 1))
+    assert.are.same(2, navigation.hunk_line(segments, 21, -1))
+    assert.is_nil(navigation.hunk_line(segments, 21, 1))
+  end)
+
   it("does not wrap", function()
     assert.is_nil(navigation.unreviewed_line(SEGMENTS, {}, 8, 1))
     assert.is_nil(navigation.unreviewed_line(SEGMENTS, {}, 2, -1))

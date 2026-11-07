@@ -142,7 +142,7 @@ A failed `jj diff` or `jj file show` is a `JjFailed` (stack error state). Messag
 | Lifecycle | `Opened{cwd, revset}`, `Closed`, `Cleared`, `RefreshRequested`, `SnapshotRequested` |
 | JJ | `RootResolved{root}`, `OpChecked{op_id}`, `StackLoaded{revisions}`, `DiffLoaded{commit_id, files}`, `ContentLoaded{commit_id, path, lines}`, `JjFailed{stderr}` |
 | Store | `StoreLoaded{marks, comments}`, `StoreFailed{error}` |
-| Review | `ToggleRequested{target, now}`, `Stepped{unit, change_id, path, line, offset}` (`unit`: `unreviewed`; the handler picks the line finder per unit, Strategy), `CommentSubmitted{anchor, text}`, `CommentDeleted{id}` |
+| Review | `ToggleRequested{target, now}`, `Stepped{unit, change_id, path, line, offset}` (`unit`: `unreviewed` or `hunk`; the handler picks the line finder per unit, Strategy), `CommentSubmitted{anchor, text}`, `CommentDeleted{id}` |
 | UI | `FoldToggled{change_id}`, `FileOpened{change_id, path}`, `FileStepped{change_id, path, offset}`, `FocusChanged{file?, path?}`, `BufferShown{file}`, `EditRequested{change_id}` |
 
 ## Effects

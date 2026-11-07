@@ -171,6 +171,7 @@ Buffer-local. Only in review buffers.
 | `<leader>r-` | Show / hide removed blocks. Hidden: the buffer reads as the file at the revision. Marks and comments stay. |
 | `<leader>rx` | Delete the comment shown at the cursor line (the first one if there are more) |
 | `]r` / `[r` | Next / previous unreviewed line or block, in this file only. No wrap. A block: its attach line. |
+| `]h` / `[h` | Next / previous hunk, in this file only. No wrap. Lands on the first change of the hunk; a removed block: its attach line. Works in both modes, on every revision. |
 | `]R` / `[R` | Next / previous file in the revision |
 
 No key to change revision. Use the explorer.

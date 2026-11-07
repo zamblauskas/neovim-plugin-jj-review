@@ -28,6 +28,9 @@ local STEPPERS = {
   unreviewed = function(segments, state, msg)
     return navigation.unreviewed_line(segments, state.marks, msg.line, msg.offset)
   end,
+  hunk = function(segments, _, msg)
+    return navigation.hunk_line(segments, msg.line, msg.offset)
+  end,
 }
 
 ---@param state review.State
