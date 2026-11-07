@@ -56,6 +56,8 @@ The review follows Vim conventions (netrw, nvim-tree). There is no special diff 
 - File rows under the revision, grouped by directory (tree). Directories first, then files, sorted by name.
   A directory with one subdirectory and no files is one row (`src/app/service/`). Directory rows have no counts
   and do not fold.
+- Guide lines show the tree shape: `├` and `└` before each entry, `│` under each ancestor that continues
+  below it. Two columns per level, two columns of indent under the revision. Group `ReviewGuide`.
 - File row: colored status letter (`A`, `M`, `D`, `R`, `C`), name, `← old/path` for a rename or copy,
   `(binary)` for a binary file.
 - Counts: `reviewed / total` reviewable lines. Binary file: `0/1` or `1/1`.

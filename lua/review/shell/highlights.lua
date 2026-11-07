@@ -38,6 +38,7 @@ local LINKS = {
   ReviewComment = "DiagnosticInfo",
   ReviewCommentOutdated = "DiagnosticWarn",
   ReviewDirectory = "Directory",
+  ReviewGuide = "Comment",
   ReviewStatusAdded = "Added",
   ReviewStatusModified = "Changed",
   ReviewStatusDeleted = "Removed",

@@ -73,7 +73,7 @@ describe("view.explorer", function()
       "",
       "▸ ◆ uxlm: final fixes",
       "▾   jrgk: (no description)",
-      "    Loading…",
+      "  Loading…",
     }, v.lines)
   end)
 
@@ -99,9 +99,22 @@ describe("view.explorer", function()
     })
     local v = view_of(state)
     assert.are.same(
-      { "    src/app/", "      A a.ts", "    R b.ts ← old/b.ts", "    D c.bin (binary)" },
+      { "  ├ src/app/", "  │ └ A a.ts", "  ├ R b.ts ← old/b.ts", "  └ D c.bin (binary)" },
       vim.tbl_map(left, vim.list_slice(v.lines, 5))
     )
+  end)
+
+  it("colors the guide lines", function()
+    local state = state_with({ type = "ok", revisions = { rev("uxlm", "x") } })
+    state = tbl.with(state, { diffs = { uxlm = { file("added", "d/a"), file("added", "b") } } })
+    local hl = vim.tbl_filter(function(h)
+      return h.group == "ReviewGuide"
+    end, view_of(state).highlights)
+    assert.are.same({
+      { row = 4, col_start = 0, col_end = 6, group = "ReviewGuide" },
+      { row = 5, col_start = 0, col_end = 10, group = "ReviewGuide" },
+      { row = 6, col_start = 0, col_end = 6, group = "ReviewGuide" },
+    }, hl)
   end)
 
   it("colors the status letter", function()
@@ -110,7 +123,8 @@ describe("view.explorer", function()
     local hl = vim.tbl_filter(function(h)
       return h.group == "ReviewStatusAdded"
     end, view_of(state).highlights)
-    assert.are.same({ { row = 4, col_start = 4, col_end = 6, group = "ReviewStatusAdded" } }, hl)
+    -- "  └ " is 6 bytes
+    assert.are.same({ { row = 4, col_start = 6, col_end = 8, group = "ReviewStatusAdded" } }, hl)
   end)
 
   describe("current file", function()
@@ -163,7 +177,7 @@ describe("view.explorer", function()
       assert.are.same("Stack (1)" .. string.rep(" ", 28) .. "1/2", v.lines[1])
       assert.are.same(40, vim.fn.strdisplaywidth(v.lines[4]))
       assert.truthy(v.lines[4]:find("1/2$"))
-      assert.are.same("    ✅ A a" .. string.rep(" ", 27) .. "1/1", v.lines[5])
+      assert.are.same("  ├ ✅ A a" .. string.rep(" ", 27) .. "1/1", v.lines[5])
     end)
 
     it("marks a done revision", function()

@@ -16,7 +16,7 @@ local M = {}
 ---@field right? review.Row  -- right-aligned (counts)
 ---@field target? review.ExplorerTarget
 
-local TREE_INDENT = "    "
+local TREE_INDENT = "  "
 
 --- File status → letter and highlight group.
 local STATUS = {
@@ -160,18 +160,29 @@ local function file_suffix(file)
   return suffix
 end
 
+--- Guide lines of a tree entry: `│ ` under each ancestor that continues, then `├ ` or `└ ` for the entry.
+---@param entry review.TreeEntry
+---@return review.Chunk
+local function guide_chunk(entry)
+  local lines = vim.tbl_map(function(continues)
+    return continues and "│ " or "  "
+  end, entry.guides)
+  table.insert(lines, entry.last and "└ " or "├ ")
+  return { TREE_INDENT .. table.concat(lines), "ReviewGuide" }
+end
+
 ---@param entry review.TreeEntry
 ---@param change_id string
 ---@param ctx review.ExplorerContext
 ---@return review.ExplorerEntry
 local function tree_entry(entry, change_id, ctx)
-  local indent = TREE_INDENT .. string.rep("  ", entry.depth)
+  local guide = guide_chunk(entry)
   if entry.type == "dir" then
-    return { chunks = { { indent }, { entry.name, "ReviewDirectory" } } }
+    return { chunks = { guide, { entry.name, "ReviewDirectory" } } }
   end
   local file = assert(entry.file, "file entry")
   local status, count = STATUS[file.status], counts.file(file, ctx.state.marks)
-  local chunks = { { indent }, unpack(done_icon(count, ctx.state.config.icons)) }
+  local chunks = { guide, unpack(done_icon(count, ctx.state.config.icons)) }
   vim.list_extend(chunks, { { status[1] .. " ", status[2] }, { entry.name } })
   return {
     chunks = vim.list_extend(chunks, file_suffix(file)),
