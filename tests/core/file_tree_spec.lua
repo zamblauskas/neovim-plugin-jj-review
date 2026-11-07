@@ -31,6 +31,21 @@ describe("core.file_tree", function()
     assert.are.same({ "src/", "  app/", "    a.ts", "  x.ts" }, outline(entries))
   end)
 
+  it("knows which ancestors continue below an entry, and the last sibling", function()
+    local entries = file_tree.build({ file("src/x.ts"), file("src/app/a.ts"), file("src/app/b.ts"), file("z.ts") })
+    local guides = vim.tbl_map(function(entry)
+      return { entry.name, entry.guides, entry.last }
+    end, entries)
+    assert.are.same({
+      { "src/", {}, false },
+      { "app/", { true }, false },
+      { "a.ts", { true, true }, false },
+      { "b.ts", { true, true }, true },
+      { "x.ts", { true }, true },
+      { "z.ts", {}, true },
+    }, guides)
+  end)
+
   it("keeps the file diff in file entries", function()
     local f = file("a.lua")
     assert.are.equal(f, file_tree.build({ f })[1].file)
