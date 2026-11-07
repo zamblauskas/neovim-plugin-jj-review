@@ -48,6 +48,30 @@ end
 local DELETED_LINES = { "" }
 local BINARY_LINES = { "Binary file" }
 
+--- A review file resolved in the state: its revision, its file diff, and its new text when known.
+---@class review.Source
+---@field rev review.Revision
+---@field file review.FileDiff
+---@field lines? string[]  -- new text (`M.new_lines`)
+
+--- A source whose new text is known.
+---@class review.LoadedSource: review.Source
+---@field lines string[]
+
+--- Resolve a review file. Nil when the revision or the file is not in the stack.
+---@param state review.State
+---@param change_id string
+---@param path string
+---@return review.Source?
+function M.source(state, change_id, path)
+  local rev = M.revision(state, change_id)
+  local file = rev and M.file(state, rev, path)
+  if not (rev and file) then
+    return nil
+  end
+  return { rev = rev, file = file, lines = M.new_lines(state, rev, file) }
+end
+
 --- Lines of the buffer with the new text, when known without jj or in the cache (memoization by commit id).
 ---@param state review.State
 ---@param rev review.Revision

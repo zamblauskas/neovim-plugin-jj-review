@@ -8,6 +8,7 @@ local M = {}
 
 ---@class review.Segment
 ---@field type "added"|"removed"
+---@field hunk integer              -- index of the hunk in `file.hunks`
 ---@field line integer              -- 1-based buffer line: the added line, or the line a block attaches to
 ---@field above boolean             -- removed block: shown above `line` (else below)
 ---@field lines review.DiffLine[]   -- one line for "added"; the block for "removed"
@@ -42,27 +43,32 @@ end
 ---@param line review.DiffLine
 ---@param line_no integer
 ---@param ctx review.PlaceContext
-local function add_removed(out, line, line_no, ctx)
+---@param index integer  -- hunk index
+local function add_removed(out, line, line_no, ctx, index)
   local last = out[#out]
   if last and last.type == "removed" and last.next_line == line_no then
     table.insert(last.lines, line)
     return
   end
   local place, above = block_place(line_no, ctx)
-  table.insert(out, { type = "removed", line = place, above = above, lines = { line }, next_line = line_no })
+  table.insert(
+    out,
+    { type = "removed", hunk = index, line = place, above = above, lines = { line }, next_line = line_no }
+  )
 end
 
 ---@param hunk review.Hunk
+---@param index integer
 ---@param ctx review.PlaceContext
 ---@param out review.Segment[]
-local function hunk_segments(hunk, ctx, out)
+local function hunk_segments(hunk, index, ctx, out)
   local line_no = first_new_line(hunk)
   for _, line in ipairs(hunk.lines) do
     if line.kind == "-" then
-      add_removed(out, line, line_no, ctx)
+      add_removed(out, line, line_no, ctx, index)
     else
       if line.kind == "+" then
-        table.insert(out, { type = "added", line = line_no, above = false, lines = { line } })
+        table.insert(out, { type = "added", hunk = index, line = line_no, above = false, lines = { line } })
       end
       line_no = line_no + 1
     end
@@ -86,8 +92,8 @@ end
 function M.segments(file, line_count)
   local ctx, out = { line_count = line_count, empty = new_text_empty(file) }, {}
   if not file.binary then
-    for _, hunk in ipairs(file.hunks) do
-      hunk_segments(hunk, ctx, out)
+    for index, hunk in ipairs(file.hunks) do
+      hunk_segments(hunk, index, ctx, out)
     end
   end
   return out
@@ -104,6 +110,52 @@ function M.keys(segment)
     end
   end
   return out
+end
+
+--- Buffer lines of the hunk: its new lines (context included), and the lines its segments are placed on.
+--- A hunk without new lines has only its segments.
+---@param hunk review.Hunk
+---@param segments review.Segment[]  -- of this hunk
+---@return integer[]
+local function hunk_lines(hunk, segments)
+  local lines = vim.tbl_map(function(segment)
+    return segment.line
+  end, segments)
+  if hunk.new_count > 0 then
+    vim.list_extend(lines, { hunk.new_start, hunk.new_start + hunk.new_count - 1 })
+  end
+  return lines
+end
+
+---@param lines integer[]
+---@param line integer
+---@return boolean
+local function covers(lines, line)
+  return #lines > 0 and line >= math.min(unpack(lines)) and line <= math.max(unpack(lines))
+end
+
+--- Segments of the hunk `index`.
+---@param segments review.Segment[]
+---@param index integer
+---@return review.Segment[]
+function M.of_hunk(segments, index)
+  return vim.tbl_filter(function(segment)
+    return segment.hunk == index
+  end, segments)
+end
+
+--- Index of the hunk that has the buffer line. Nil when the line is between hunks.
+---@param file review.FileDiff
+---@param segments review.Segment[]  -- of the file
+---@param line integer
+---@return integer?
+function M.hunk_at(file, segments, line)
+  for index, hunk in ipairs(file.hunks) do
+    if covers(hunk_lines(hunk, M.of_hunk(segments, index)), line) then
+      return index
+    end
+  end
+  return nil
 end
 
 --- Buffer line of the first change. 1 when the file has no changes.

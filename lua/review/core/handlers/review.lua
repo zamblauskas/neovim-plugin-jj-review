@@ -12,28 +12,25 @@ local M = {}
 
 --- Keys the target points at, in its file. None if the file is unknown.
 ---@param state review.State
----@param target review.ToggleTarget
+---@param target review.Target
 ---@return string[]
 local function target_keys(state, target)
-  local rev = lookup.revision(state, target.change_id)
-  local file = rev and lookup.file(state, rev, target.path)
-  if not (rev and file) then
+  local source = lookup.source(state, target.change_id, target.path)
+  if not source then
     return {}
   end
-  return targets.keys(file, #(lookup.new_lines(state, rev, file) or { "" }), target)
+  return targets.keys(source.file, #(source.lines or { "" }), target)
 end
 
 ---@param state review.State
 ---@param msg review.Msg.UnreviewedStepped
 ---@return review.State, review.Effect[]
 function M.UnreviewedStepped(state, msg)
-  local rev = lookup.revision(state, msg.change_id)
-  local file = rev and lookup.file(state, rev, msg.path)
-  local lines = rev and file and lookup.new_lines(state, rev, file)
-  if not (file and lines) then
+  local source = lookup.source(state, msg.change_id, msg.path)
+  if not (source and source.lines) then
     return state, {}
   end
-  local segments = changes.segments(file, #lines)
+  local segments = changes.segments(source.file, #source.lines)
   local line = navigation.unreviewed_line(segments, state.marks, msg.line, msg.offset)
   return state, line and { effect.move_cursor(line) } or {}
 end

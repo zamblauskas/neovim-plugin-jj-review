@@ -70,16 +70,31 @@ The value is an object, so v1 can add `last_seen` (F-21).
 - Binary file: total 1. Reviewed if the file key is marked. File key: `b | path | blob`. `blob` is the new git
   blob hash from the `index` line of the diff (the old one for a deleted file). No content is loaded.
 
+## Targets and selections
+
+A toggle key or a comment key points at a target. A target resolves to a selection of one of two kinds. The kind
+decides what the toggle marks and what a comment is anchored to.
+
+| Kind | Selects | Targets |
+|---|---|---|
+| Lines | Buffer lines `first..last` of the new text. Unchanged lines are included. | Line (cursor line), visual range |
+| Segments | Changes of the diff: added lines and removed blocks (`core/changes.lua`). No unchanged lines. | Removed block, hunk |
+
+| Target | Selection |
+|---|---|
+| Line | Lines: the cursor line. Attached removed blocks are not in it (`<leader>rR` is for those). |
+| Visual range | Lines: the selected lines, with the removed blocks attached to them. |
+| Removed block | Segments: the removed blocks attached to the cursor line (above or below it). None → no selection. |
+| Hunk | Segments: every segment of the hunk at the cursor line. The cursor is in a hunk on any of its new lines (context included) or on a line a removed block of it is placed on. Between hunks → no selection. |
+| File | The whole file diff. Not a selection: it has keys (all reviewable keys, or the binary file key) and no comment. |
+
+A hunk is a jj hunk (`--context 2`): changes at most 4 unchanged lines apart form one hunk.
+
 ## Toggle rules
 
-| Target | Rule |
-|---|---|
-| Line | Toggle its key. |
-| Visual range | Added lines in the range, and removed blocks attached to lines in the range. If one or more are unmarked, mark all. Else unmark all. |
-| Removed block | Same rule over the keys of all removed lines in the block attached to the cursor line (above or below it). |
-| File | Same rule over all reviewable keys in the file diff. |
-
-Context lines in a range are skipped.
+Keys of the selection: added lines in the lines, and the removed blocks attached to them when the selection
+includes them; or the keys of the segments. If one or more keys are unmarked, mark all. Else unmark all. A line without a key (context, blank)
+has nothing to toggle.
 
 ## Comments
 
@@ -106,6 +121,12 @@ File: `.jj/review/comments.json`. One file for the repo. The agent reads it.
 
 - `anchor.type`: `line`, `range`, `block` in v0. `revision` in v1 (F-20).
 - `keys`: the anchors of the lines (line, range) or of the removed lines (block).
+- A comment on a lines selection: `line` when one line, else `range`; `side` `+`; `start_line`, `end_line` the
+  lines; `keys` the anchors of every line in the lines (unchanged lines too); `snippet` the new text of the lines.
+- A comment on a segments selection: `block` with `side` `-` when every segment is a removed block; else `line`
+  or `range` with `side` `+`. `start_line`, `end_line`: the first and last line the segments are placed on.
+  `keys`: the keys of the segments only. `snippet`: the removed and added text of the segments, top to bottom.
+  So a hunk comment is placed below the last change of the hunk, not below its trailing context.
 - A comment can be on unchanged lines in the diff. An unchanged line in a hunk gets an `=` key
   (`= | path | hash | occurrence`), calculated the same way from the new text, with its own occurrence count.
   It is only a comment anchor: no mark, no count, never equal to a review key.

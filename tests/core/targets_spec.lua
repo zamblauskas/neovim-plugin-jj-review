@@ -50,6 +50,28 @@ describe("core.targets", function()
     assert.are.same({ key_of("b"), key_of("B") }, keys_of({ type = "range", first = 1, last = 3 }))
   end)
 
+  it("selects every change of the hunk at the line, from a context line too", function()
+    assert.are.same(5, #keys_of({ type = "hunk", line = 4 }))
+    assert.are.same({}, keys_of({ type = "hunk", line = 9 }))
+  end)
+
+  it("selects lines for a line or range target, segments for a block or hunk target", function()
+    local function select(fields)
+      return targets.select(FILE, 8, vim.tbl_extend("force", { change_id = "c", path = "f" }, fields))
+    end
+    local line, range = select({ type = "line", line = 3 }), select({ type = "range", first = 1, last = 3 })
+    assert.are.same({ type = "lines", first = 3, last = 3, blocks = false }, line)
+    assert.are.same({ type = "lines", first = 1, last = 3, blocks = true }, range)
+    assert.are.same("segments", assert(select({ type = "block", line = 7 })).type)
+    assert.are.same(5, #assert(select({ type = "hunk", line = 4 })).segments)
+  end)
+
+  it("has no selection for a file target, a line without a block, or a line between hunks", function()
+    assert.is_nil(targets.select(FILE, 8, { type = "file", change_id = "c", path = "f" }))
+    assert.is_nil(targets.select(FILE, 8, { type = "block", change_id = "c", path = "f", line = 3 }))
+    assert.is_nil(targets.select(FILE, 8, { type = "hunk", change_id = "c", path = "f", line = 9 }))
+  end)
+
   it("selects all keys of the file", function()
     assert.are.same(5, #keys_of({ type = "file" }))
   end)

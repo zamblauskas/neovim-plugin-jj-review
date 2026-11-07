@@ -62,6 +62,42 @@ describe("core.changes", function()
     assert.are.same(1, changes.first_line({ status = "added", path = "f", binary = false, hunks = {} }, 1))
   end)
 
+  it("tags each segment with its hunk index", function()
+    local f = file("@@ -1,3 +1,3 @@\n a\n-b\n+B\n c\n@@ -10,3 +10,3 @@\n x\n-y\n+Y\n z\n")
+    local hunks = vim.tbl_map(function(s)
+      return s.hunk
+    end, changes.segments(f, 12))
+    assert.are.same({ 1, 1, 2, 2 }, hunks)
+  end)
+
+  it("finds the hunk at a line: on its new lines, context included; none between hunks", function()
+    local f = file("@@ -1,3 +1,3 @@\n a\n-b\n+B\n c\n@@ -10,3 +10,3 @@\n x\n-y\n+Y\n z\n")
+    local segments = changes.segments(f, 12)
+    assert.are.same({ 1, 1, 2, nil }, {
+      changes.hunk_at(f, segments, 1),
+      changes.hunk_at(f, segments, 3),
+      changes.hunk_at(f, segments, 10),
+      changes.hunk_at(f, segments, 5),
+    })
+  end)
+
+  it("finds a hunk without new lines on the line its block is placed on", function()
+    local f = file("@@ -3,2 +2,0 @@\n-x\n-y\n")
+    local segments = changes.segments(f, 5)
+    assert.are.same(1, changes.hunk_at(f, segments, 3))
+    assert.is_nil(changes.hunk_at(f, segments, 2))
+  end)
+
+  it("finds a hunk that removes the end of the file on the last line", function()
+    local f = file("@@ -1,3 +1,2 @@\n a\n b\n-c\n")
+    assert.are.same(1, changes.hunk_at(f, changes.segments(f, 2), 2))
+  end)
+
+  it("lists the segments of a hunk", function()
+    local f = file("@@ -1,3 +1,3 @@\n a\n-b\n+B\n c\n@@ -10,3 +10,3 @@\n x\n-y\n+Y\n z\n")
+    assert.are.same({ "-11^ y", "+11" }, outline(changes.of_hunk(changes.segments(f, 12), 2)))
+  end)
+
   it("lists the keys of a segment", function()
     local segment = {
       type = "removed",

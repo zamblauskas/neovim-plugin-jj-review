@@ -55,19 +55,19 @@ lua/review/
     keys.lua            line keys (computed once per diff, kept on the diff lines)
     counts.lua          counts per file, revision, stack
     toggle.lua          toggle rules → mark patch {set, unset}; apply
-    targets.lua         toggle target (line, range, block, file) → keys
+    targets.lua         target (line, range, block, hunk, file) → selection (lines | segments) → keys
     navigation.lua      next / previous unreviewed change
     review_buffers.lua  review buffers (Reconciler): load, prepare, show, release after each change
     modes.lua           commit on disk; view or working-copy mode
     explorer_cursor.lua explorer cursor row after a redraw
     keymap_docs.lua     key descriptions by section (keymap desc, help)
     comments.lua        comment types, patch, anchor lines, placement: found / outdated / orphaned
-    comment_drafts.lua  comment target → anchor, keys, snippet, title
+    comment_drafts.lua  comment target → selection → anchor, keys, snippet, title (one draft per kind)
     folds.lua           explorer fold state: user choice, default rule
     file_tree.lua       files → tree entries in display order (explorer, ]R)
     explorer_actions.lua  (action, row target) → message
-    lookup.lua          revision by change id, file by path
-    changes.lua         segments (added line, removed block) placed on buffer lines
+    lookup.lua          revision by change id, file by path; source (revision, file, new text)
+    changes.lua         segments (added line, removed block) placed on buffer lines; hunk at a line
   lib/
     tbl.lua             pure table helpers: with (immutable update)
     list.lua            pure list helpers: pluck, index_by
@@ -195,7 +195,8 @@ ids) are fetched again. Old cache entries not in the stack are dropped.
 
 ### Toggle reviewed
 
-1. Keymap → `ToggleRequested{target}` (target: line, range, block, file).
+1. Keymap → `ToggleRequested{target}` (target: line, range, block, hunk, file). `targets.select` resolves it
+   to a selection: buffer lines, or segments of the diff (spec/data-model.md "Targets and selections").
 2. `core/toggle` returns a new mark set.
 3. Effects: `SaveMarks`, `RenderDiff`, `RenderExplorer`.
 

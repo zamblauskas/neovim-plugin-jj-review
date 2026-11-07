@@ -121,7 +121,7 @@ local M = {}
 
 ---@class review.Msg.ToggleRequested
 ---@field type "ToggleRequested"
----@field target review.ToggleTarget
+---@field target review.Target
 ---@field now string  -- ISO 8601 UTC, for new marks
 
 --- Go to the next (`offset` 1) or previous (-1) unreviewed change in the file, from `line`.
@@ -135,7 +135,7 @@ local M = {}
 --- A comment key: open the input for a comment on the target.
 ---@class review.Msg.CommentRequested
 ---@field type "CommentRequested"
----@field target review.CommentTarget
+---@field target review.Target
 
 ---@class review.Msg.CommentSubmitted
 ---@field type "CommentSubmitted"
@@ -283,7 +283,7 @@ function M.store_failed(generation, error)
   return { type = "StoreFailed", generation = generation, error = error }
 end
 
----@param target review.ToggleTarget
+---@param target review.Target
 ---@param now string
 ---@return review.Msg.ToggleRequested
 function M.toggle_requested(target, now)
@@ -295,7 +295,7 @@ function M.unreviewed_stepped(change_id, path, line, offset)
   return { type = "UnreviewedStepped", change_id = change_id, path = path, line = line, offset = offset }
 end
 
----@param target review.CommentTarget
+---@param target review.Target
 ---@return review.Msg.CommentRequested
 function M.comment_requested(target)
   return { type = "CommentRequested", target = target }
